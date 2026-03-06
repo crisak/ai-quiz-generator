@@ -8,6 +8,7 @@
     <!-- Anti-flash: apply theme class before first paint to avoid flicker -->
     <script>
       (function () {
+        // Load theme preference
         try {
           var stored = localStorage.getItem('quiz-ia-theme');
           var pref = stored ? JSON.parse(stored).state.preference : 'system';
@@ -20,8 +21,16 @@
             document.documentElement.classList.add('dark');
           }
         }
+
+        // Initialize config object for runtime variables
+        window.__QUIZ_IA_CONFIG__ = {
+          GEMINI_API_KEY: ''
+          // API key will be set by config.js or environment at runtime
+        };
       })();
     </script>
+    <!-- Load environment config at runtime (not compiled into bundle) -->
+    <script src="/config.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {

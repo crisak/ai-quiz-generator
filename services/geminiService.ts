@@ -2,7 +2,28 @@
 import { GoogleGenAI, Type, Chat, GenerateContentResponse } from "@google/genai";
 import { Question, RefinementQuestion, AnkiCard, AnkiSuggestion, QuestionType, ChatMessage, DocumentContext } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+// Get API key from runtime config (set in index.html, NOT from import.meta.env to avoid compilation)
+const getApiKey = (): string => {
+  // Check window config first (injected at runtime, not compiled)
+  const windowConfig = (window as any).__QUIZ_IA_CONFIG__;
+  if (windowConfig?.GEMINI_API_KEY) {
+    return windowConfig.GEMINI_API_KEY;
+  }
+
+  // Fallback to direct window variable
+  if ((window as any).__GEMINI_API_KEY__) {
+    return (window as any).__GEMINI_API_KEY__;
+  }
+
+  return '';
+};
+
+const apiKey = getApiKey();
+if (!apiKey) {
+  console.warn('⚠️ GEMINI_API_KEY not configured. Please set VITE_GEMINI_API_KEY in .env.local');
+}
+
+const ai = new GoogleGenAI({ apiKey });
 
 // Custom error class for API errors
 export class GeminiAPIError extends Error {
