@@ -1,0 +1,144 @@
+/* ================================================================
+   QUIZ IA — DESIGN TOKENS
+   Single source of truth for the entire color palette.
+   Edit variables here to retheme the whole application.
+   ================================================================ */
+
+/* --- Light Mode (default — no class on <html>) --- */
+:root {
+  /* Backgrounds — stacked from page to surface to elevated */
+  --bg-primary:     #F8FAFC;   /* Page background */
+  --bg-elevated:    #F1F5F9;   /* Inputs, hover states, chips */
+  --bg-surface:     #FFFFFF;   /* Cards, modals, panels */
+  --bg-surface-2:   #F8FAFC;   /* Dropdowns above cards */
+
+  /* Borders */
+  --border:         #E2E8F0;   /* Standard borders */
+  --border-soft:    #F1F5F9;   /* Subtle section dividers */
+
+  /* Text hierarchy — from most to least prominent */
+  --ink-1:          #0F172A;   /* Headings, primary body text */
+  --ink-2:          #1E293B;   /* Medium-emphasis text */
+  --ink-3:          #475569;   /* Labels, descriptions */
+  --ink-4:          #64748B;   /* Metadata, counts */
+  --ink-muted:      #94A3B8;   /* Disabled, placeholder */
+
+  /* Action — primary CTA (amber, same in both themes) */
+  --action:         #F59E0B;
+  --action-hover:   #D97706;
+  --action-text:    #0F172A;   /* Text on action-colored background */
+
+  /* Semantic feedback */
+  --success:        #10B981;   /* Correct answer, completion */
+  --error:          #EF4444;   /* Incorrect answer, destructive */
+  --info:           #3B82F6;   /* Info, neutral links */
+  --warning:        #F59E0B;
+}
+
+/* --- Dark Mode --- */
+html.dark {
+  --bg-primary:     #0A0F1F;
+  --bg-elevated:    #253347;
+  --bg-surface:     #1E293B;
+  --bg-surface-2:   #253347;
+
+  --border:         #334155;
+  --border-soft:    #1E293B;
+
+  --ink-1:          #E2E8F0;
+  --ink-2:          #CBD5E1;
+  --ink-3:          #94A3B8;
+  --ink-4:          #64748B;
+  --ink-muted:      #475569;
+
+  --action:         #F59E0B;
+  --action-hover:   #D97706;
+  --action-text:    #0A0F1F;
+
+  --success:        #10B981;
+  --error:          #EF4444;
+  --info:           #3B82F6;
+  --warning:        #F59E0B;
+}
+
+/* ================================================================
+   BASELINE
+   ================================================================ */
+body {
+  background-color: var(--bg-primary);
+  color: var(--ink-1);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+/* ================================================================
+   TAILWIND CLASS OVERRIDES
+   These remap hardcoded slate-* classes to CSS variables so all
+   existing components switch themes without code changes.
+   Uses !important to win over Tailwind CDN's injected styles.
+   ================================================================ */
+
+/* ── Solid backgrounds ── */
+.bg-slate-950        { background-color: var(--bg-primary)  !important; }
+.bg-slate-900        { background-color: var(--bg-surface)  !important; }
+.bg-slate-800        { background-color: var(--bg-elevated) !important; }
+.bg-slate-700        { background-color: var(--border)      !important; }
+.bg-slate-600        { background-color: var(--border)      !important; }
+
+/* ── Opacity variants — backdrop headers, overlays, hover states ── */
+.bg-slate-950\/95    { background-color: color-mix(in srgb, var(--bg-primary)  95%, transparent) !important; }
+.bg-slate-950\/80    { background-color: color-mix(in srgb, var(--bg-primary)  80%, transparent) !important; }
+.bg-slate-900\/80    { background-color: color-mix(in srgb, var(--bg-surface)  80%, transparent) !important; }
+.bg-slate-900\/50    { background-color: color-mix(in srgb, var(--bg-surface)  50%, transparent) !important; }
+.bg-slate-900\/40    { background-color: color-mix(in srgb, var(--bg-surface)  40%, transparent) !important; }
+.bg-slate-900\/30    { background-color: color-mix(in srgb, var(--bg-surface)  30%, transparent) !important; }
+.bg-slate-800\/60    { background-color: color-mix(in srgb, var(--bg-elevated) 60%, transparent) !important; }
+.bg-slate-800\/50    { background-color: color-mix(in srgb, var(--bg-elevated) 50%, transparent) !important; }
+.bg-slate-800\/40    { background-color: color-mix(in srgb, var(--bg-elevated) 40%, transparent) !important; }
+.bg-slate-800\/30    { background-color: color-mix(in srgb, var(--bg-elevated) 30%, transparent) !important; }
+.bg-slate-800\/20    { background-color: color-mix(in srgb, var(--bg-elevated) 20%, transparent) !important; }
+.bg-slate-700\/70    { background-color: color-mix(in srgb, var(--border)      70%, transparent) !important; }
+.bg-slate-700\/60    { background-color: color-mix(in srgb, var(--border)      60%, transparent) !important; }
+.bg-slate-700\/50    { background-color: color-mix(in srgb, var(--border)      50%, transparent) !important; }
+
+/* ── Text ── */
+.text-slate-100,
+.text-slate-200  { color: var(--ink-1)    !important; }
+.text-slate-300  { color: var(--ink-2)    !important; }
+.text-slate-400  { color: var(--ink-3)    !important; }
+.text-slate-500  { color: var(--ink-4)    !important; }
+.text-slate-600  { color: var(--ink-muted)!important; }
+/* text-slate-950 used for text ON a colored background — maps to page bg for contrast */
+.text-slate-950  { color: var(--bg-primary) !important; }
+
+/* ── text-white / hover:text-white ──────────────────────────────────────────
+   Hardcoded white text is invisible on light surfaces. We remap it to the
+   primary ink token so it always contrasts with the current background.
+   On colored backgrounds (e.g. bg-primary amber buttons) ink-1 still works:
+     dark → #E2E8F0 (soft white) on dark-navy bg ✓
+     light → #0F172A (near-black) on amber/blue bg ✓
+   ─────────────────────────────────────────────────────────────────────────── */
+.text-white              { color: var(--ink-1) !important; }
+.hover\:text-white:hover { color: var(--ink-1) !important; }
+
+/* ── Borders ── */
+.border-slate-950                       { border-color: var(--border-soft) !important; }
+.border-slate-900                       { border-color: var(--border-soft) !important; }
+.border-slate-900\/30                   { border-color: color-mix(in srgb, var(--border-soft) 30%, transparent) !important; }
+.border-slate-800                       { border-color: var(--border)      !important; }
+.border-slate-800\/60                   { border-color: color-mix(in srgb, var(--border) 60%, transparent) !important; }
+.border-slate-800\/50                   { border-color: color-mix(in srgb, var(--border) 50%, transparent) !important; }
+.border-slate-700                       { border-color: var(--border)      !important; }
+.border-slate-700\/50                   { border-color: color-mix(in srgb, var(--border) 50%, transparent) !important; }
+.border-slate-700\/40                   { border-color: color-mix(in srgb, var(--border) 40%, transparent) !important; }
+.border-slate-700\/20                   { border-color: color-mix(in srgb, var(--border) 20%, transparent) !important; }
+.border-slate-600                       { border-color: var(--border)      !important; }
+.border-slate-600\/50                   { border-color: color-mix(in srgb, var(--border) 50%, transparent) !important; }
+
+/* ── Divide ── */
+.divide-slate-700\/40 > * + *          { border-color: color-mix(in srgb, var(--border) 40%, transparent) !important; }
+
+/* ── Mermaid diagrams ── */
+.mermaid svg {
+  max-width: 100%;
+  height: auto;
+}

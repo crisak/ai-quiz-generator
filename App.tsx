@@ -14,6 +14,8 @@ import MarkdownRenderer from './components/MarkdownRenderer';
 import SelectionTooltip from './components/SelectionTooltip';
 import MarkdownWithHighlights from './components/MarkdownWithHighlights';
 import HighlightedText from './components/HighlightedText';
+import { ThemeToggle } from './components/ThemeToggle';
+import { useTheme } from './hooks/useTheme';
 import {
   Brain,
   ChevronRight,
@@ -64,6 +66,8 @@ const EXAMPLE_PROMPTS = [
 ] as const;
 
 const App: React.FC = () => {
+  useTheme();
+
   // Persisted data state (survives page reload)
   const {
     topic, setTopic,
@@ -854,7 +858,10 @@ const App: React.FC = () => {
   // Stage 2: Refinement
   if (!quiz && refinementQuestions) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 relative">
+        <div className="absolute top-4 right-4">
+          <ThemeToggle />
+        </div>
         <div className="max-w-lg w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl animate-in zoom-in duration-300">
           <div className="flex items-center gap-3 mb-6">
             <PartyPopper className="text-primary" />
@@ -895,7 +902,10 @@ const App: React.FC = () => {
       return r.selectedIndices.length > 0 && r.isCorrect;
     }).length;
     return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center py-16 px-4">
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center py-16 px-4 relative">
+        <div className="absolute top-4 right-4">
+          <ThemeToggle />
+        </div>
         <div className="max-w-5xl w-full space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
           {/* Header Results Card */}
           <div className="bg-slate-900 border border-slate-800 rounded-[3rem] p-12 shadow-2xl text-center relative overflow-hidden">
@@ -1049,6 +1059,7 @@ const App: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <ThemeToggle />
              <button
               onClick={() => setShowStudyList(true)}
               className="p-2.5 bg-slate-800 hover:bg-slate-700 text-blue-400 rounded-xl flex items-center gap-2 relative transition-all"

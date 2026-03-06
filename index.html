@@ -1,10 +1,27 @@
 
 <!DOCTYPE html>
-<html lang="es" class="dark">
+<html lang="es">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Gemini Quiz Master</title>
+    <!-- Anti-flash: apply theme class before first paint to avoid flicker -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('quiz-ia-theme');
+          var pref = stored ? JSON.parse(stored).state.preference : 'system';
+          var dark =
+            pref === 'dark' ||
+            (pref === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (dark) document.documentElement.classList.add('dark');
+        } catch (e) {
+          if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+          }
+        }
+      })();
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -18,8 +35,8 @@
               background: "hsl(222.2, 84%, 4.9%)",
               foreground: "hsl(210, 40%, 98%)",
               primary: {
-                DEFAULT: "hsl(224.3, 76.3%, 48%)",
-                foreground: "hsl(210, 40%, 98%)",
+                DEFAULT: "#F59E0B",
+                foreground: "#0F172A",
               },
               secondary: {
                 DEFAULT: "hsl(217.2, 32.6%, 17.5%)",
@@ -50,16 +67,6 @@
         },
       }
     </script>
-    <style>
-      body {
-        background-color: #020617;
-        color: #f8fafc;
-      }
-      .mermaid svg {
-        max-width: 100%;
-        height: auto;
-      }
-    </style>
   <script type="importmap">
 {
   "imports": {

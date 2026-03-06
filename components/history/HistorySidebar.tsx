@@ -2,6 +2,7 @@
 import React from 'react';
 import { PanelLeftClose, PanelLeft, Brain } from 'lucide-react';
 import { ProjectsSection } from './ProjectsSection';
+import { ThemeToggle } from '../ThemeToggle';
 
 interface HistorySidebarProps {
   userId: string;
@@ -61,6 +62,12 @@ export const HistorySidebar: React.FC<HistorySidebarProps> = ({
           selectedProjectId={selectedProjectId}
           onSelectProject={onSelectProject}
         />
+      </div>
+
+      {/* Footer: theme toggle */}
+      <div className="flex-shrink-0 border-t border-slate-800 px-4 py-3 flex items-center justify-between">
+        <span className="text-slate-500 text-xs">Tema</span>
+        <ThemeToggle />
       </div>
     </div>
   );
