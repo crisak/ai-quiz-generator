@@ -732,6 +732,7 @@ const App: React.FC = () => {
           onSelectProject={setSelectedProjectId}
           collapsed={sidebarCollapsed}
           onCollapse={setSidebarCollapsed}
+          onShowApiKeyModal={() => setShowApiKeyModal(true)}
         />
 
         {showQuizForm ? (
@@ -891,7 +892,14 @@ const App: React.FC = () => {
   if (!quiz && refinementQuestions) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 relative">
-        <div className="absolute top-4 right-4">
+        <div className="absolute top-4 right-4 flex items-center gap-2">
+          <button
+            onClick={() => setShowApiKeyModal(true)}
+            className="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition-all"
+            title="Cambiar API Key"
+          >
+            <Key size={20} />
+          </button>
           <ThemeToggle />
         </div>
         <div className="max-w-lg w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl animate-in zoom-in duration-300">
@@ -935,7 +943,14 @@ const App: React.FC = () => {
     }).length;
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center py-16 px-4 relative">
-        <div className="absolute top-4 right-4">
+        <div className="absolute top-4 right-4 flex items-center gap-2">
+          <button
+            onClick={() => setShowApiKeyModal(true)}
+            className="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition-all"
+            title="Cambiar API Key"
+          >
+            <Key size={20} />
+          </button>
           <ThemeToggle />
         </div>
         <div className="max-w-5xl w-full space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">

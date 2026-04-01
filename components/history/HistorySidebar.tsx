@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { PanelLeftClose, PanelLeft, Brain } from 'lucide-react';
+import { PanelLeftClose, PanelLeft, Brain, Key } from 'lucide-react';
 import { ProjectsSection } from './ProjectsSection';
 import { ThemeToggle } from '../ThemeToggle';
 
@@ -10,6 +10,7 @@ interface HistorySidebarProps {
   onSelectProject: (id: string | null) => void;
   collapsed: boolean;
   onCollapse: (collapsed: boolean) => void;
+  onShowApiKeyModal?: () => void;
 }
 
 export const HistorySidebar: React.FC<HistorySidebarProps> = ({
@@ -18,6 +19,7 @@ export const HistorySidebar: React.FC<HistorySidebarProps> = ({
   onSelectProject,
   collapsed,
   onCollapse,
+  onShowApiKeyModal,
 }) => {
   if (collapsed) {
     return (
@@ -29,6 +31,15 @@ export const HistorySidebar: React.FC<HistorySidebarProps> = ({
         >
           <PanelLeft size={18} />
         </button>
+        {onShowApiKeyModal && (
+          <button
+            onClick={onShowApiKeyModal}
+            className="text-slate-500 hover:text-white transition-colors"
+            title="Cambiar API Key"
+          >
+            <Key size={18} />
+          </button>
+        )}
         <div className="w-6 h-6 bg-blue-600/20 rounded-lg flex items-center justify-center">
           <Brain size={13} className="text-blue-400" />
         </div>
@@ -46,13 +57,24 @@ export const HistorySidebar: React.FC<HistorySidebarProps> = ({
           </div>
           <span className="text-slate-200 text-sm font-semibold">Quiz IA</span>
         </div>
-        <button
-          onClick={() => onCollapse(true)}
-          className="text-slate-500 hover:text-white transition-colors"
-          title="Cerrar sidebar"
-        >
-          <PanelLeftClose size={15} />
-        </button>
+        <div className="flex items-center gap-2">
+          {onShowApiKeyModal && (
+            <button
+              onClick={onShowApiKeyModal}
+              className="text-slate-500 hover:text-white transition-colors p-1"
+              title="Cambiar API Key"
+            >
+              <Key size={14} />
+            </button>
+          )}
+          <button
+            onClick={() => onCollapse(true)}
+            className="text-slate-500 hover:text-white transition-colors"
+            title="Cerrar sidebar"
+          >
+            <PanelLeftClose size={15} />
+          </button>
+        </div>
       </div>
 
       {/* Projects section */}
