@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { Key, CheckCircle2, XCircle, Loader2, Eye, EyeOff, Shield, Trash2 } from 'lucide-react';
 import { GoogleGenAI } from '@google/genai';
 
@@ -83,7 +84,7 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onClose, onSave, onCle
     }
   };
 
-  return (
+  const modalContent = (
     <div className="fixed inset-0 z-[300] bg-slate-950/95 backdrop-blur-xl flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-3xl shadow-2xl animate-in zoom-in duration-300" onClick={e => e.stopPropagation()}>
         <div className="p-8">
@@ -220,4 +221,6 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onClose, onSave, onCle
       </div>
     </div>
   );
+
+  return ReactDOM.createPortal(modalContent, document.body);
 };

@@ -884,6 +884,13 @@ const App: React.FC = () => {
         )}
       </div>
       {importDialog}
+      {showApiKeyModal && (
+        <ApiKeyModal
+          onClose={() => setShowApiKeyModal(false)}
+          onSave={handleSaveApiKey}
+          onClear={handleClearApiKey}
+        />
+      )}
       </>
     );
   }
@@ -930,6 +937,13 @@ const App: React.FC = () => {
             </div>
           </div>
         </div>
+        {showApiKeyModal && (
+          <ApiKeyModal
+            onClose={() => setShowApiKeyModal(false)}
+            onSave={handleSaveApiKey}
+            onClear={handleClearApiKey}
+          />
+        )}
       </div>
     );
   }
@@ -1042,6 +1056,13 @@ const App: React.FC = () => {
             </div>
           )}
         </div>
+        {showApiKeyModal && (
+          <ApiKeyModal
+            onClose={() => setShowApiKeyModal(false)}
+            onSave={handleSaveApiKey}
+            onClear={handleClearApiKey}
+          />
+        )}
       </div>
     );
   }
