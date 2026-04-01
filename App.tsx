@@ -16,6 +16,9 @@ import MarkdownWithHighlights from './components/MarkdownWithHighlights';
 import HighlightedText from './components/HighlightedText';
 import { ThemeToggle } from './components/ThemeToggle';
 import { useTheme } from './hooks/useTheme';
+import { useConfig } from './hooks/useConfig';
+import { SetupScreen } from './components/SetupScreen';
+import { ApiKeyModal } from './components/ApiKeyModal';
 import {
   Brain,
   ChevronRight,
@@ -43,6 +46,7 @@ import {
   FileText,
   Lightbulb,
   ArrowLeft,
+  Key,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { nanoid } from 'nanoid';
@@ -67,6 +71,33 @@ const EXAMPLE_PROMPTS = [
 
 const App: React.FC = () => {
   useTheme();
+  const { isConfigured, loadApiKey, saveApiKey, removeConfig } = useConfig();
+
+  // Load API key into window config on mount
+  useEffect(() => {
+    if (isConfigured) {
+      loadApiKey().then(key => {
+        if (key) {
+          (window as any).__GEMINI_API_KEY__ = key;
+        }
+      });
+    }
+  }, [isConfigured, loadApiKey]);
+
+  const handleSaveApiKey = useCallback(async (key: string) => {
+    await saveApiKey(key);
+    (window as any).__GEMINI_API_KEY__ = key;
+  }, [saveApiKey]);
+
+  const handleClearApiKey = useCallback(() => {
+    removeConfig();
+    (window as any).__GEMINI_API_KEY__ = '';
+  }, [removeConfig]);
+
+  // Setup gate - block access until configured
+  if (!isConfigured) {
+    return <SetupScreen onComplete={() => window.location.reload()} />;
+  }
 
   // Persisted data state (survives page reload)
   const {
@@ -93,6 +124,7 @@ const App: React.FC = () => {
   const [evaluatingOpen, setEvaluatingOpen] = useState(false);
   const [showStudyList, setShowStudyList] = useState(false);
   const [showCodeSolution, setShowCodeSolution] = useState(false);
+  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
 
   // Pending chat message (from tooltip direct-search)
   const [pendingChatMessage, setPendingChatMessage] = useState<{ text: string; id: number } | null>(null);
@@ -1060,6 +1092,13 @@ const App: React.FC = () => {
           </div>
           <div className="flex items-center gap-3">
             <ThemeToggle />
+            <button
+              onClick={() => setShowApiKeyModal(true)}
+              className="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl flex items-center gap-2 transition-all"
+              title="Cambiar API Key"
+            >
+              <Key size={20} />
+            </button>
              <button
               onClick={() => setShowStudyList(true)}
               className="p-2.5 bg-slate-800 hover:bg-slate-700 text-blue-400 rounded-xl flex items-center gap-2 relative transition-all"
@@ -1388,6 +1427,14 @@ const App: React.FC = () => {
       </footer>
 
       {importDialog}
+
+      {showApiKeyModal && (
+        <ApiKeyModal
+          onClose={() => setShowApiKeyModal(false)}
+          onSave={handleSaveApiKey}
+          onClear={handleClearApiKey}
+        />
+      )}
 
       {currentQuestion && (
         <ChatSidebar
