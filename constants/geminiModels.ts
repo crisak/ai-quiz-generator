@@ -3,42 +3,82 @@ export const GEMINI_MODELS = [
   {
     id: 'gemini-3.1-pro-preview',
     label: 'Gemini 3.1 Pro',
-    description: 'Máximo razonamiento — quizzes complejos, multi-paso y código avanzado',
+    description: 'El modelo más potente disponible. Ideal para generar quizzes muy complejos con múltiples tipos de preguntas, código avanzado y razonamiento profundo.',
     tier: 'pro' as const,
   },
   {
     id: 'gemini-3-flash-preview',
     label: 'Gemini 3 Flash',
-    description: 'Rendimiento de frontera a bajo costo — ideal para generación y evaluación de quizzes',
+    description: 'Rendimiento de frontera a bajo costo. Excelente para generación de quizzes, evaluación de respuestas y chat tutor con alta calidad y velocidad aceptable.',
     tier: 'flash' as const,
   },
   {
     id: 'gemini-3.1-flash-lite-preview',
     label: 'Gemini 3.1 Flash Lite',
-    description: 'El más económico — perfecto para preguntas de refinamiento y tags',
+    description: 'El más económico de la serie 3. Perfecto para tareas ligeras como sugerencias de tema, generación de tags y tarjetas Anki simples.',
     tier: 'lite' as const,
   },
   // ── Gemini 2.5 Series (estables) ─────────────────────────────────
   {
     id: 'gemini-2.5-pro',
     label: 'Gemini 2.5 Pro',
-    description: 'Razonamiento profundo y estable — quizzes técnicos exigentes y evaluación de código',
+    description: 'Razonamiento profundo y estable. Recomendado para generar quizzes técnicos exigentes, evaluar código y preguntas de respuesta abierta con alta precisión.',
     tier: 'pro' as const,
   },
   {
     id: 'gemini-2.5-flash',
     label: 'Gemini 2.5 Flash',
-    description: 'Equilibrio precio/rendimiento — generación de quiz fluida y chat tutor responsivo',
+    description: 'El mejor equilibrio entre velocidad y calidad. Ideal para el chat con tutor IA: respuestas fluidas, contexto largo y costo moderado.',
     tier: 'flash' as const,
   },
   {
     id: 'gemini-2.5-flash-lite',
     label: 'Gemini 2.5 Flash Lite',
-    description: 'Más rápido y económico — refinamiento de tema, Anki cards y tareas ligeras',
+    description: 'El más rápido y económico de los modelos estables. Perfecto para sugerencias de refinamiento, generación de tags y tarjetas Anki.',
     tier: 'lite' as const,
   },
 ] as const;
 
 export type GeminiModelTier = typeof GEMINI_MODELS[number]['tier'];
 export type GeminiModelId = typeof GEMINI_MODELS[number]['id'];
-export const DEFAULT_MODEL: GeminiModelId = 'gemini-2.5-flash';
+export type ModelUseCase = 'suggestions' | 'quiz' | 'chat' | 'anki';
+
+export interface ModelConfig {
+  modelSuggestions: GeminiModelId;
+  modelQuiz: GeminiModelId;
+  modelChat: GeminiModelId;
+  modelAnki: GeminiModelId;
+}
+
+export const DEFAULT_MODEL_CONFIG: ModelConfig = {
+  modelSuggestions: 'gemini-2.5-flash-lite',
+  modelQuiz: 'gemini-2.5-pro',
+  modelChat: 'gemini-2.5-flash',
+  modelAnki: 'gemini-2.5-flash-lite',
+};
+
+export const USE_CASE_META: Record<ModelUseCase, { title: string; description: string; modelKey: keyof ModelConfig }> = {
+  suggestions: {
+    title: 'Sugerencias de tema',
+    description: 'Genera las 3 preguntas de refinamiento antes del quiz. Tarea ligera — velocidad sobre potencia.',
+    modelKey: 'modelSuggestions',
+  },
+  quiz: {
+    title: 'Generación de quiz',
+    description: 'Crea todas las preguntas del quiz y evalúa respuestas abiertas y código. Usa el modelo más potente para mayor calidad.',
+    modelKey: 'modelQuiz',
+  },
+  chat: {
+    title: 'Chat con tutor IA',
+    description: 'Responde dudas durante el quiz con contexto de la pregunta. Necesita ser fluido, responsivo y manejar conversaciones largas.',
+    modelKey: 'modelChat',
+  },
+  anki: {
+    title: 'Tarjetas Anki',
+    description: 'Analiza la conversación del tutor y genera tarjetas de repaso. Tarea ligera sin necesidad de razonamiento profundo.',
+    modelKey: 'modelAnki',
+  },
+};
+
+// Backward-compat alias
+export const DEFAULT_MODEL: GeminiModelId = DEFAULT_MODEL_CONFIG.modelChat;

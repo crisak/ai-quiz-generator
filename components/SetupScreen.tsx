@@ -2,13 +2,35 @@ import React, { useState, useCallback } from 'react';
 import { Brain, Key, CheckCircle2, XCircle, Loader2, Eye, EyeOff, Shield, Cpu } from 'lucide-react';
 import { GoogleGenAI } from '@google/genai';
 import { useConfig } from '../hooks/useConfig';
-import { GEMINI_MODELS, DEFAULT_MODEL, type GeminiModelId } from '../constants/geminiModels';
+import {
+  GEMINI_MODELS,
+  DEFAULT_MODEL_CONFIG,
+  USE_CASE_META,
+  type ModelConfig,
+  type ModelUseCase,
+  type GeminiModelId,
+} from '../constants/geminiModels';
 
 interface SetupScreenProps {
   onComplete: () => void;
 }
 
 type ValidationState = 'idle' | 'loading' | 'success' | 'error';
+
+const USE_CASES: ModelUseCase[] = ['suggestions', 'quiz', 'chat', 'anki'];
+
+function tierBadgeClass(modelId: GeminiModelId) {
+  const tier = GEMINI_MODELS.find(m => m.id === modelId)?.tier;
+  const base = 'text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md';
+  if (tier === 'pro')  return `${base} bg-amber-500/20 text-amber-400`;
+  if (tier === 'lite') return `${base} bg-sky-500/20 text-sky-400`;
+  return `${base} bg-slate-700/60 text-slate-300`;
+}
+
+function tierLabel(modelId: GeminiModelId) {
+  const tier = GEMINI_MODELS.find(m => m.id === modelId)?.tier;
+  return tier === 'pro' ? 'Pro' : tier === 'lite' ? 'Lite' : 'Flash';
+}
 
 export const SetupScreen: React.FC<SetupScreenProps> = ({ onComplete }) => {
   const { saveApiKey } = useConfig();
@@ -17,18 +39,21 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onComplete }) => {
   const [validationState, setValidationState] = useState<ValidationState>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-  const [selectedModel, setSelectedModel] = useState<GeminiModelId>(DEFAULT_MODEL);
+  const [modelConfig, setModelConfig] = useState<ModelConfig>(DEFAULT_MODEL_CONFIG);
+
+  const updateModel = (uc: ModelUseCase, id: GeminiModelId) => {
+    setModelConfig(prev => ({ ...prev, [USE_CASE_META[uc].modelKey]: id }));
+    if (validationState === 'success') setValidationState('idle');
+  };
 
   const testConnection = useCallback(async () => {
     if (!apiKey.trim()) return;
-
     setValidationState('loading');
     setErrorMessage('');
-
     try {
       const ai = new GoogleGenAI({ apiKey: apiKey.trim() });
       await ai.models.generateContent({
-        model: selectedModel,
+        model: modelConfig.modelChat,
         contents: 'Say "OK" if you can hear me.',
         config: { maxOutputTokens: 5 },
       });
@@ -45,20 +70,19 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onComplete }) => {
         setErrorMessage('Error al conectar. Verifica tu conexión.');
       }
     }
-  }, [apiKey, selectedModel]);
+  }, [apiKey, modelConfig.modelChat]);
 
   const handleStart = useCallback(async () => {
     if (validationState !== 'success') return;
-
     setIsSaving(true);
     try {
-      await saveApiKey(apiKey.trim(), selectedModel);
+      await saveApiKey(apiKey.trim(), modelConfig);
       onComplete();
     } catch {
       setErrorMessage('Error al guardar. Intenta de nuevo.');
       setIsSaving(false);
     }
-  }, [apiKey, selectedModel, validationState, saveApiKey, onComplete]);
+  }, [apiKey, modelConfig, validationState, saveApiKey, onComplete]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && validationState !== 'success' && apiKey.trim()) {
@@ -68,7 +92,7 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onComplete }) => {
 
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-lg">
         <div className="flex justify-center mb-10">
           <div className="w-20 h-20 bg-slate-900 border border-slate-800 rounded-3xl flex items-center justify-center">
             <Brain className="w-10 h-10 text-slate-400" />
@@ -123,71 +147,53 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onComplete }) => {
               )}
             </div>
 
-            {/* Model selector */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="flex items-center gap-1.5 text-xs font-bold text-slate-500 uppercase tracking-widest">
-                  <Cpu size={12} />
-                  Modelo
-                </label>
-                <span className="text-xs text-slate-600">
-                  {GEMINI_MODELS.find(m => m.id === selectedModel)?.tier === 'pro'
-                    ? 'Alto rendimiento'
-                    : GEMINI_MODELS.find(m => m.id === selectedModel)?.tier === 'lite'
-                    ? 'Máxima velocidad y economía'
-                    : 'Equilibrio velocidad / calidad'}
-                </span>
-              </div>
-              <div className="grid grid-cols-1 gap-1.5">
-                {GEMINI_MODELS.map((model) => {
-                  const isActive = selectedModel === model.id;
-                  return (
-                    <button
-                      key={model.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedModel(model.id);
-                        if (validationState === 'success') setValidationState('idle');
-                      }}
-                      className={[
-                        'flex items-center justify-between px-4 py-3 rounded-xl border text-left',
-                        'transition-all duration-150',
-                        isActive
-                          ? 'bg-slate-800/60 border-amber-500/60'
-                          : 'bg-transparent border-slate-800 hover:border-slate-700 hover:bg-slate-800/30',
-                      ].join(' ')}
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className={[
-                          'w-1.5 h-1.5 rounded-full flex-shrink-0 transition-all duration-150',
-                          isActive ? 'bg-amber-400' : 'bg-slate-700',
-                        ].join(' ')} />
-                        <div className="min-w-0">
-                          <div className={[
-                            'text-sm font-semibold leading-none mb-1 transition-colors duration-150',
-                            isActive ? 'text-white' : 'text-slate-300',
-                          ].join(' ')}>
-                            {model.label}
-                          </div>
-                          <div className="text-xs text-slate-500 leading-none truncate">
-                            {model.description}
-                          </div>
-                        </div>
-                      </div>
-                      <span className={[
-                        'text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ml-3 flex-shrink-0 transition-all duration-150',
-                        model.tier === 'pro'
-                          ? isActive ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-800 text-slate-500'
-                          : model.tier === 'lite'
-                          ? isActive ? 'bg-sky-500/20 text-sky-400' : 'bg-slate-800 text-slate-500'
-                          : isActive ? 'bg-slate-700/60 text-slate-300' : 'bg-slate-800/50 text-slate-600',
-                      ].join(' ')}>
-                        {model.tier === 'pro' ? 'Pro' : model.tier === 'lite' ? 'Lite' : 'Flash'}
+            {/* Divider */}
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px bg-slate-800" />
+              <span className="flex items-center gap-1.5 text-xs font-bold text-slate-500 uppercase tracking-widest">
+                <Cpu size={12} />
+                Modelos por caso de uso
+              </span>
+              <div className="flex-1 h-px bg-slate-800" />
+            </div>
+
+            {/* 4 use-case model selectors */}
+            <div className="space-y-4">
+              {USE_CASES.map((uc) => {
+                const meta = USE_CASE_META[uc];
+                const currentModelId = modelConfig[meta.modelKey];
+                return (
+                  <div key={uc} className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-slate-300">
+                        {meta.title}
+                      </label>
+                      <span className={tierBadgeClass(currentModelId)}>
+                        {tierLabel(currentModelId)}
                       </span>
-                    </button>
-                  );
-                })}
-              </div>
+                    </div>
+                    <p className="text-xs text-slate-600 leading-relaxed">{meta.description}</p>
+                    <div className="relative">
+                      <select
+                        value={currentModelId}
+                        onChange={(e) => updateModel(uc, e.target.value as GeminiModelId)}
+                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-slate-600 transition-colors appearance-none cursor-pointer pr-8"
+                      >
+                        {GEMINI_MODELS.map(m => (
+                          <option key={m.id} value={m.id}>
+                            {m.label} — {m.tier === 'pro' ? 'Pro' : m.tier === 'lite' ? 'Lite' : 'Flash'}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                          <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
             {validationState === 'success' && (
@@ -198,25 +204,19 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onComplete }) => {
             )}
 
             <div className="pt-2 space-y-3">
-              {validationState !== 'success' ? (
+              {validationState !== 'success' && (
                 <button
                   onClick={testConnection}
                   disabled={!apiKey.trim() || validationState === 'loading'}
                   className="w-full py-3.5 bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-600 rounded-xl font-bold text-white text-sm transition-all flex items-center justify-center gap-2"
                 >
                   {validationState === 'loading' ? (
-                    <>
-                      <Loader2 size={16} className="animate-spin" />
-                      Verificando...
-                    </>
+                    <><Loader2 size={16} className="animate-spin" />Verificando...</>
                   ) : (
-                    <>
-                      <Shield size={16} />
-                      Probar conexión
-                    </>
+                    <><Shield size={16} />Probar conexión</>
                   )}
                 </button>
-              ) : null}
+              )}
 
               <button
                 onClick={handleStart}
@@ -224,10 +224,7 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onComplete }) => {
                 className="w-full py-3.5 bg-primary hover:bg-amber-400 disabled:bg-slate-800 disabled:text-slate-600 rounded-xl font-bold text-slate-950 text-sm transition-all flex items-center justify-center gap-2 disabled:cursor-not-allowed"
               >
                 {isSaving ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin" />
-                    Guardando...
-                  </>
+                  <><Loader2 size={16} className="animate-spin" />Guardando...</>
                 ) : (
                   'Comenzar'
                 )}

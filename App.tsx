@@ -19,7 +19,7 @@ import { useTheme } from './hooks/useTheme';
 import { useConfig } from './hooks/useConfig';
 import { SetupScreen } from './components/SetupScreen';
 import { ApiKeyModal } from './components/ApiKeyModal';
-import type { GeminiModelId } from './constants/geminiModels';
+import type { GeminiModelId, ModelConfig } from './constants/geminiModels';
 import {
   Brain,
   ChevronRight,
@@ -72,36 +72,52 @@ const EXAMPLE_PROMPTS = [
 
 const App: React.FC = () => {
   useTheme();
-  const { isConfigured, loadApiKey, saveApiKey, saveModel, removeConfig, selectedModel } = useConfig();
+  const { isConfigured, loadApiKey, saveApiKey, saveModelConfig, removeConfig, modelConfig } = useConfig();
 
-  // Load API key and model into window config on mount
+  const applyModelConfigToWindow = (config: ModelConfig) => {
+    (window as any).__QUIZ_IA_CONFIG__ = {
+      ...((window as any).__QUIZ_IA_CONFIG__ || {}),
+      GEMINI_MODELS: {
+        suggestions: config.modelSuggestions,
+        quiz: config.modelQuiz,
+        chat: config.modelChat,
+        anki: config.modelAnki,
+      },
+    };
+  };
+
+  // Load API key and model config into window on mount
   useEffect(() => {
     if (isConfigured) {
       loadApiKey().then(key => {
         if (key) {
           (window as any).__GEMINI_API_KEY__ = key;
+          (window as any).__QUIZ_IA_CONFIG__ = {
+            ...((window as any).__QUIZ_IA_CONFIG__ || {}),
+            GEMINI_API_KEY: key,
+          };
         }
       });
-      (window as any).__GEMINI_MODEL__ = selectedModel;
+      applyModelConfigToWindow(modelConfig);
     }
-  }, [isConfigured, loadApiKey, selectedModel]);
+  }, [isConfigured, loadApiKey, modelConfig]);
 
-  const handleSaveApiKey = useCallback(async (key: string, model: GeminiModelId) => {
-    await saveApiKey(key, model);
+  const handleSaveApiKey = useCallback(async (key: string, config: ModelConfig) => {
+    await saveApiKey(key, config);
     (window as any).__GEMINI_API_KEY__ = key;
-    (window as any).__GEMINI_MODEL__ = model;
+    applyModelConfigToWindow(config);
     resetAiInstance();
   }, [saveApiKey]);
 
-  const handleSaveModelOnly = useCallback((model: GeminiModelId) => {
-    saveModel(model);
-    (window as any).__GEMINI_MODEL__ = model;
-  }, [saveModel]);
+  const handleSaveModelOnly = useCallback((config: ModelConfig) => {
+    saveModelConfig(config);
+    applyModelConfigToWindow(config);
+  }, [saveModelConfig]);
 
   const handleClearApiKey = useCallback(() => {
     removeConfig();
     (window as any).__GEMINI_API_KEY__ = '';
-    (window as any).__GEMINI_MODEL__ = '';
+    (window as any).__QUIZ_IA_CONFIG__ = {};
     resetAiInstance();
   }, [removeConfig]);
 
@@ -136,6 +152,7 @@ const App: React.FC = () => {
   const [showStudyList, setShowStudyList] = useState(false);
   const [showCodeSolution, setShowCodeSolution] = useState(false);
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
 
   // Pending chat message (from tooltip direct-search)
   const [pendingChatMessage, setPendingChatMessage] = useState<{ text: string; id: number } | null>(null);
@@ -279,6 +296,26 @@ const App: React.FC = () => {
       setLoading(false);
     }
   };
+
+  const handleExitWithoutSave = useCallback(() => {
+    setShowExitConfirm(false);
+    resetAll();
+  }, [resetAll]);
+
+  const handleExitWithSave = useCallback(async () => {
+    if (currentSessionId && quiz) {
+      try {
+        await quizSessions.update(currentSessionId, {
+          results: quiz.results,
+          isCompleted: false,
+        });
+      } catch (err) {
+        console.warn('Could not save session on exit:', err);
+      }
+    }
+    setShowExitConfirm(false);
+    resetAll();
+  }, [currentSessionId, quiz, quizSessions, resetAll]);
 
   const updateChatHistory = useCallback((history: ChatMessage[]) => {
     setQuiz(prev => {
@@ -899,9 +936,9 @@ const App: React.FC = () => {
         <ApiKeyModal
           onClose={() => setShowApiKeyModal(false)}
           onSave={handleSaveApiKey}
-          onSaveModelOnly={handleSaveModelOnly}
+          onSaveConfigOnly={handleSaveModelOnly}
           onClear={handleClearApiKey}
-          currentModel={selectedModel}
+          currentConfig={modelConfig}
         />
       )}
       </>
@@ -920,7 +957,7 @@ const App: React.FC = () => {
           >
             <Key size={20} />
           </button>
-          <ThemeToggle />
+          <ThemeToggle size="md" />
         </div>
         <div className="max-w-lg w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl animate-in zoom-in duration-300">
           <div className="flex items-center gap-3 mb-6">
@@ -978,7 +1015,7 @@ const App: React.FC = () => {
           >
             <Key size={20} />
           </button>
-          <ThemeToggle />
+          <ThemeToggle size="md" />
         </div>
         <div className="max-w-5xl w-full space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
           {/* Header Results Card */}
@@ -1130,6 +1167,13 @@ const App: React.FC = () => {
       <header className="sticky top-0 z-[100] bg-slate-950/80 backdrop-blur-md border-b border-slate-800 p-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 overflow-hidden">
+            <button
+              onClick={() => setShowExitConfirm(true)}
+              className="p-2 text-slate-600 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all flex-shrink-0"
+              title="Salir del quiz"
+            >
+              <X size={18} />
+            </button>
             <Brain className="text-primary w-8 h-8 flex-shrink-0" />
             <h1 className="font-black text-lg truncate hidden sm:block tracking-tight">{quiz!.topic}</h1>
             <div className="h-1.5 w-24 sm:w-40 bg-slate-800 rounded-full ml-4 overflow-hidden hidden md:block">
@@ -1140,7 +1184,7 @@ const App: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <ThemeToggle />
+            <ThemeToggle size="md" />
             <button
               onClick={() => setShowApiKeyModal(true)}
               className="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl flex items-center gap-2 transition-all"
@@ -1481,9 +1525,9 @@ const App: React.FC = () => {
         <ApiKeyModal
           onClose={() => setShowApiKeyModal(false)}
           onSave={handleSaveApiKey}
-          onSaveModelOnly={handleSaveModelOnly}
+          onSaveConfigOnly={handleSaveModelOnly}
           onClear={handleClearApiKey}
-          currentModel={selectedModel}
+          currentConfig={modelConfig}
         />
       )}
 
@@ -1505,6 +1549,43 @@ const App: React.FC = () => {
           pendingMessage={pendingChatMessage}
           onPendingConsumed={() => setPendingChatMessage(null)}
         />
+      )}
+
+      {showExitConfirm && (
+        <div
+          className="fixed inset-0 z-[200] bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setShowExitConfirm(false)}
+        >
+          <div
+            className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl animate-in zoom-in duration-200"
+            onClick={e => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-black text-white mb-2">¿Salir del quiz?</h3>
+            <p className="text-slate-400 text-sm mb-6">
+              Llevas {quiz!.currentQuestionIndex + 1} de {quiz!.questions.length} preguntas.
+            </p>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={handleExitWithSave}
+                className="w-full py-3 bg-primary hover:bg-amber-400 text-slate-950 rounded-xl font-bold text-sm transition-all"
+              >
+                Guardar y salir
+              </button>
+              <button
+                onClick={handleExitWithoutSave}
+                className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold text-sm transition-all"
+              >
+                Salir sin guardar
+              </button>
+              <button
+                onClick={() => setShowExitConfirm(false)}
+                className="w-full py-2 text-slate-500 hover:text-slate-400 text-sm transition-all"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -1,24 +1,25 @@
 
 import { GoogleGenAI, Type, Chat, GenerateContentResponse } from "@google/genai";
 import { Question, RefinementQuestion, AnkiCard, AnkiSuggestion, QuestionType, ChatMessage, DocumentContext } from "../types";
-import { DEFAULT_MODEL } from "../constants/geminiModels";
+import { DEFAULT_MODEL_CONFIG, type ModelUseCase } from "../constants/geminiModels";
 
 const getApiKey = (): string => {
   const windowConfig = (window as any).__QUIZ_IA_CONFIG__;
-  if (windowConfig?.GEMINI_API_KEY) {
-    return windowConfig.GEMINI_API_KEY;
-  }
-  if ((window as any).__GEMINI_API_KEY__) {
-    return (window as any).__GEMINI_API_KEY__;
-  }
+  if (windowConfig?.GEMINI_API_KEY) return windowConfig.GEMINI_API_KEY;
+  if ((window as any).__GEMINI_API_KEY__) return (window as any).__GEMINI_API_KEY__;
   return '';
 };
 
-const getModel = (): string => {
-  const windowConfig = (window as any).__QUIZ_IA_CONFIG__;
-  if (windowConfig?.GEMINI_MODEL) return windowConfig.GEMINI_MODEL;
+const getModelForUseCase = (useCase: ModelUseCase): string => {
+  const wc = (window as any).__QUIZ_IA_CONFIG__;
+  // Per-use-case config (new system)
+  if (wc?.GEMINI_MODELS?.[useCase]) return wc.GEMINI_MODELS[useCase];
+  // Legacy single-model fallback
+  if (wc?.GEMINI_MODEL) return wc.GEMINI_MODEL;
   if ((window as any).__GEMINI_MODEL__) return (window as any).__GEMINI_MODEL__;
-  return DEFAULT_MODEL;
+  // Hard default per use case
+  const key = `model${useCase.charAt(0).toUpperCase()}${useCase.slice(1)}` as keyof typeof DEFAULT_MODEL_CONFIG;
+  return DEFAULT_MODEL_CONFIG[key];
 };
 
 let aiInstance: GoogleGenAI | null = null;
@@ -123,7 +124,7 @@ export const generateRefinementQuestions = async (topic: string, documentContext
       ? `El usuario quiere un quiz sobre: "${topic}" y ha adjuntado un documento de referencia. Genera 3 preguntas breves para refinar el enfoque del quiz basado en el documento (ej: nivel de dificultad, secciones específicas a priorizar, enfoque teórico vs práctico).`
       : `El usuario quiere un quiz sobre: "${topic}". Genera 3 preguntas breves para refinar su enfoque (ej: nivel de dificultad, subtemas específicos, enfoque teórico vs práctico).`;
     const response = await getAi().models.generateContent({
-      model: getModel(),
+      model: getModelForUseCase('suggestions'),
       contents: buildContents(basePrompt, documentContext),
       config: {
         responseMimeType: "application/json",
@@ -155,7 +156,7 @@ export const generateQuiz = async (topic: string, count: number, refinements: Re
       : '';
 
     const response = await getAi().models.generateContent({
-      model: getModel(),
+      model: getModelForUseCase('quiz'),
       contents: buildContents(`Genera un quiz sobre "${topic}".${docNote}
       Contexto adicional: ${refinementContext}.
       El quiz debe tener exactamente ${count} preguntas.
@@ -232,7 +233,7 @@ export const evaluateOpenAnswer = async (
 ): Promise<{ isCorrect: boolean; feedback: string }> => {
   try {
     const response = await getAi().models.generateContent({
-      model: getModel(),
+      model: getModelForUseCase('quiz'),
       contents: `Evalúa la respuesta del usuario a esta pregunta de quiz.
 Pregunta: ${question}
 Respuesta correcta de referencia: ${correctAnswer}
@@ -267,7 +268,7 @@ export const evaluateCodeAnswer = async (
 ): Promise<{ isCorrect: boolean; feedback: string }> => {
   try {
     const response = await getAi().models.generateContent({
-      model: getModel(),
+      model: getModelForUseCase('quiz'),
       contents: `Eres un evaluador de código experto. Evalúa si el código del estudiante resuelve correctamente el siguiente desafío de programación.
 
 Desafío: ${question}
@@ -308,7 +309,7 @@ Da un feedback educativo y constructivo en español (máximo 3 oraciones). Si ha
   }
 };
 
-export const createChatSession = (questionContext: string, chatHistory?: ChatMessage[]): Chat => {
+export const createChatSession = (questionContext: string, chatHistory?: ChatMessage[], modelOverride?: string): Chat => {
   const history = chatHistory && chatHistory.length > 0
     ? chatHistory.map(msg => ({
         role: msg.role as 'user' | 'model',
@@ -317,7 +318,7 @@ export const createChatSession = (questionContext: string, chatHistory?: ChatMes
     : undefined;
 
   return getAi().chats.create({
-    model: getModel(),
+    model: modelOverride ?? getModelForUseCase('chat'),
     config: {
       systemInstruction: `Eres un tutor experto. Estás ayudando a un estudiante con una pregunta específica de un quiz.
 
@@ -340,7 +341,7 @@ export const analyzeConversationForAnki = async (
 ): Promise<AnkiSuggestion[]> => {
   try {
     const response = await getAi().models.generateContent({
-      model: getModel(),
+      model: getModelForUseCase('anki'),
       contents: `Analiza la siguiente conversación entre un tutor y un estudiante sobre una pregunta de un quiz.
       Identifica los términos o conceptos clave que el estudiante parece necesitar reforzar basándote en sus dudas y errores.
 
@@ -378,7 +379,7 @@ export const generateAnkiCardsFromSuggestions = async (
 ): Promise<AnkiCard[]> => {
   try {
     const response = await getAi().models.generateContent({
-      model: getModel(),
+      model: getModelForUseCase('anki'),
       contents: `Convierte las siguientes sugerencias de estudio en tarjetas de Anki optimizadas.
       Tema General: ${topic}
       Sugerencias: ${JSON.stringify(suggestions)}
@@ -436,7 +437,7 @@ export const generateQuizTags = async (
 ): Promise<string[]> => {
   try {
     const response = await getAi().models.generateContent({
-      model: getModel(),
+      model: getModelForUseCase('suggestions'),
       contents: `Genera 3 a 5 tags cortos y descriptivos en español para un quiz sobre: "${topic}" con tipos de preguntas: ${questionTypes.join(', ')}.
 Ejemplos de tags: "React", "Hooks", "avanzado", "frontend", "JavaScript", "anatomía", "cálculo".
 Devuelve solo las tags relevantes al tema, sin repetir el tipo de pregunta.`,

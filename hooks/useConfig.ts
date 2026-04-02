@@ -1,16 +1,18 @@
 import { useCallback, useState } from 'react';
 import { encryptApiKey, decryptApiKey } from '../utils/crypto';
-import { DEFAULT_MODEL, type GeminiModelId } from '../constants/geminiModels';
+import { DEFAULT_MODEL_CONFIG, type ModelConfig, type GeminiModelId } from '../constants/geminiModels';
 
 const STORAGE_KEY = 'quiz-ia-config';
 
 interface StoredConfig {
   encryptedApiKey: string;
   salt: string;
+  modelConfig?: Partial<ModelConfig>;
+  // legacy field — ignored on load, overridden by modelConfig
   selectedModel?: string;
 }
 
-function loadFromStorage(): { encryptedApiKey: string | null; salt: string | null; selectedModel: string | null } {
+function loadFromStorage(): { encryptedApiKey: string | null; salt: string | null; modelConfig: ModelConfig } {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
@@ -18,15 +20,15 @@ function loadFromStorage(): { encryptedApiKey: string | null; salt: string | nul
       return {
         encryptedApiKey: parsed?.encryptedApiKey || null,
         salt: parsed?.salt || null,
-        selectedModel: parsed?.selectedModel || null,
+        modelConfig: { ...DEFAULT_MODEL_CONFIG, ...parsed?.modelConfig },
       };
     }
   } catch {}
-  return { encryptedApiKey: null, salt: null, selectedModel: null };
+  return { encryptedApiKey: null, salt: null, modelConfig: DEFAULT_MODEL_CONFIG };
 }
 
-function saveToStorage(encryptedApiKey: string, salt: string, selectedModel: string): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ encryptedApiKey, salt, selectedModel }));
+function saveToStorage(encryptedApiKey: string, salt: string, modelConfig: ModelConfig): void {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ encryptedApiKey, salt, modelConfig }));
 }
 
 function clearFromStorage(): void {
@@ -42,16 +44,14 @@ export function useConfig() {
     return !!(stored.encryptedApiKey && stored.salt);
   });
   const [apiKey, setApiKeyState] = useState<string | null>(cachedApiKey);
-  const [selectedModel, setSelectedModelState] = useState<GeminiModelId>(
-    (stored.selectedModel as GeminiModelId) || DEFAULT_MODEL
-  );
+  const [modelConfig, setModelConfigState] = useState<ModelConfig>(stored.modelConfig);
 
-  const saveApiKey = useCallback(async (key: string, model: GeminiModelId) => {
+  const saveApiKey = useCallback(async (key: string, config: ModelConfig) => {
     const { encrypted, salt } = await encryptApiKey(key);
-    saveToStorage(encrypted, salt, model);
+    saveToStorage(encrypted, salt, config);
     cachedApiKey = key;
     setApiKeyState(key);
-    setSelectedModelState(model);
+    setModelConfigState(config);
     setIsConfigured(true);
   }, []);
 
@@ -72,17 +72,16 @@ export function useConfig() {
     return null;
   }, []);
 
-  const getSelectedModel = useCallback((): GeminiModelId => {
-    const s = loadFromStorage();
-    return (s.selectedModel as GeminiModelId) || DEFAULT_MODEL;
+  const getModelConfig = useCallback((): ModelConfig => {
+    return loadFromStorage().modelConfig;
   }, []);
 
-  const saveModel = useCallback((model: GeminiModelId) => {
+  const saveModelConfig = useCallback((config: ModelConfig) => {
     const s = loadFromStorage();
     if (s.encryptedApiKey && s.salt) {
-      saveToStorage(s.encryptedApiKey, s.salt, model);
+      saveToStorage(s.encryptedApiKey, s.salt, config);
     }
-    setSelectedModelState(model);
+    setModelConfigState(config);
   }, []);
 
   const removeConfig = useCallback(() => {
@@ -90,17 +89,20 @@ export function useConfig() {
     cachedApiKey = null;
     setApiKeyState(null);
     setIsConfigured(false);
-    setSelectedModelState(DEFAULT_MODEL);
+    setModelConfigState(DEFAULT_MODEL_CONFIG);
   }, []);
 
   return {
     isConfigured,
     apiKey,
-    selectedModel,
+    modelConfig,
     loadApiKey: getApiKey,
-    getSelectedModel,
+    getModelConfig,
     saveApiKey,
-    saveModel,
+    saveModelConfig,
     removeConfig,
   };
 }
+
+// Re-export for convenience
+export type { GeminiModelId };

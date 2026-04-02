@@ -2,36 +2,59 @@ import React, { useState, useCallback, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { Key, CheckCircle2, XCircle, Loader2, Eye, EyeOff, Shield, Trash2, Cpu } from 'lucide-react';
 import { GoogleGenAI } from '@google/genai';
-import { GEMINI_MODELS, DEFAULT_MODEL, type GeminiModelId } from '../constants/geminiModels';
+import {
+  GEMINI_MODELS,
+  DEFAULT_MODEL_CONFIG,
+  USE_CASE_META,
+  type ModelConfig,
+  type ModelUseCase,
+  type GeminiModelId,
+} from '../constants/geminiModels';
 
 interface ApiKeyModalProps {
   onClose: () => void;
-  onSave: (apiKey: string, model: GeminiModelId) => Promise<void>;
-  onSaveModelOnly: (model: GeminiModelId) => void;
+  onSave: (apiKey: string, config: ModelConfig) => Promise<void>;
+  onSaveConfigOnly: (config: ModelConfig) => void;
   onClear: () => void;
-  currentModel: GeminiModelId;
+  currentConfig: ModelConfig;
 }
 
 type ValidationState = 'idle' | 'loading' | 'success' | 'error';
 
+const USE_CASES: ModelUseCase[] = ['suggestions', 'quiz', 'chat', 'anki'];
+
+function tierBadge(modelId: GeminiModelId, isActive: boolean) {
+  const tier = GEMINI_MODELS.find(m => m.id === modelId)?.tier;
+  const base = 'text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md';
+  if (tier === 'pro')  return `${base} ${isActive ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-800 text-slate-500'}`;
+  if (tier === 'lite') return `${base} ${isActive ? 'bg-sky-500/20 text-sky-400' : 'bg-slate-800 text-slate-500'}`;
+  return `${base} ${isActive ? 'bg-slate-700/60 text-slate-300' : 'bg-slate-800 text-slate-600'}`;
+}
+
+function tierLabel(modelId: GeminiModelId) {
+  const tier = GEMINI_MODELS.find(m => m.id === modelId)?.tier;
+  return tier === 'pro' ? 'Pro' : tier === 'lite' ? 'Lite' : 'Flash';
+}
+
 export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
   onClose,
   onSave,
-  onSaveModelOnly,
+  onSaveConfigOnly,
   onClear,
-  currentModel,
+  currentConfig,
 }) => {
   const [apiKey, setApiKey] = useState('');
   const [showKey, setShowKey] = useState(false);
   const [validationState, setValidationState] = useState<ValidationState>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-  const [selectedModel, setSelectedModel] = useState<GeminiModelId>(currentModel || DEFAULT_MODEL);
+  const [selectedConfig, setSelectedConfig] = useState<ModelConfig>(currentConfig || DEFAULT_MODEL_CONFIG);
 
-  // Track whether the model changed vs the persisted one
-  const modelChanged = selectedModel !== currentModel;
-  // Key is filled and validated
   const keyValidated = validationState === 'success';
+  const configChanged = USE_CASES.some(
+    uc => selectedConfig[USE_CASE_META[uc].modelKey] !== currentConfig[USE_CASE_META[uc].modelKey]
+  );
+  const canSave = keyValidated || (configChanged && !apiKey.trim());
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -43,14 +66,12 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
 
   const testConnection = useCallback(async () => {
     if (!apiKey.trim()) return;
-
     setValidationState('loading');
     setErrorMessage('');
-
     try {
       const ai = new GoogleGenAI({ apiKey: apiKey.trim() });
       await ai.models.generateContent({
-        model: selectedModel,
+        model: selectedConfig.modelChat,
         contents: 'Say "OK" if you can hear me.',
         config: { maxOutputTokens: 5 },
       });
@@ -67,25 +88,23 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
         setErrorMessage('Error al conectar. Verifica tu conexión.');
       }
     }
-  }, [apiKey, selectedModel]);
+  }, [apiKey, selectedConfig.modelChat]);
 
   const handleSave = useCallback(async () => {
     if (keyValidated) {
-      // Save both new key + model
       setIsSaving(true);
       try {
-        await onSave(apiKey.trim(), selectedModel);
+        await onSave(apiKey.trim(), selectedConfig);
         onClose();
       } catch {
         setErrorMessage('Error al guardar. Intenta de nuevo.');
         setIsSaving(false);
       }
-    } else if (modelChanged && !apiKey.trim()) {
-      // Save model only (no new key entered)
-      onSaveModelOnly(selectedModel);
+    } else if (configChanged && !apiKey.trim()) {
+      onSaveConfigOnly(selectedConfig);
       onClose();
     }
-  }, [apiKey, selectedModel, keyValidated, modelChanged, onSave, onSaveModelOnly, onClose]);
+  }, [apiKey, selectedConfig, keyValidated, configChanged, onSave, onSaveConfigOnly, onClose]);
 
   const handleClear = useCallback(() => {
     onClear();
@@ -94,14 +113,20 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
     onClose();
   }, [onClear, onClose]);
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleInputKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && validationState !== 'success' && apiKey.trim()) {
       testConnection();
     }
   };
 
-  // Can save if: key validated OR model changed (without a new key)
-  const canSave = keyValidated || (modelChanged && !apiKey.trim());
+  const updateModel = (uc: ModelUseCase, id: GeminiModelId) => {
+    setSelectedConfig(prev => ({ ...prev, [USE_CASE_META[uc].modelKey]: id }));
+    if (keyValidated) setValidationState('idle');
+  };
+
+  const saveLabel = isSaving ? 'Guardando...' :
+    keyValidated ? 'Guardar key y modelos' :
+    configChanged ? 'Guardar modelos' : 'Guardar';
 
   const modalContent = (
     <div
@@ -109,10 +134,11 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
       onClick={onClose}
     >
       <div
-        className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-3xl shadow-2xl animate-in zoom-in duration-300 max-h-[90vh] overflow-y-auto"
+        className="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-3xl shadow-2xl animate-in zoom-in duration-300 max-h-[90vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}
       >
         <div className="p-8">
+          {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-slate-800 rounded-xl flex items-center justify-center">
@@ -120,7 +146,7 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
               </div>
               <div>
                 <h2 className="text-xl font-black text-white">Configuración de API</h2>
-                <p className="text-slate-500 text-xs">API key y modelo de Gemini</p>
+                <p className="text-slate-500 text-xs">API key y modelos por caso de uso</p>
               </div>
             </div>
             <button
@@ -151,7 +177,7 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
                       setErrorMessage('');
                     }
                   }}
-                  onKeyDown={handleKeyDown}
+                  onKeyDown={handleInputKeyDown}
                   placeholder="Deja vacío para mantener la actual"
                   className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-11 pr-12 py-3.5 outline-none text-white placeholder-slate-600 focus:border-slate-600 transition-colors text-sm"
                   autoFocus
@@ -173,71 +199,53 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
               )}
             </div>
 
-            {/* Model selector */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="flex items-center gap-1.5 text-xs font-bold text-slate-500 uppercase tracking-widest">
-                  <Cpu size={12} />
-                  Modelo
-                </label>
-                <span className="text-xs text-slate-600">
-                  {GEMINI_MODELS.find(m => m.id === selectedModel)?.tier === 'pro'
-                    ? 'Alto rendimiento'
-                    : GEMINI_MODELS.find(m => m.id === selectedModel)?.tier === 'lite'
-                    ? 'Máxima velocidad y economía'
-                    : 'Equilibrio velocidad / calidad'}
-                </span>
-              </div>
-              <div className="grid grid-cols-1 gap-1.5">
-                {GEMINI_MODELS.map((model) => {
-                  const isActive = selectedModel === model.id;
-                  return (
-                    <button
-                      key={model.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedModel(model.id);
-                        if (keyValidated) setValidationState('idle');
-                      }}
-                      className={[
-                        'flex items-center justify-between px-4 py-3 rounded-xl border text-left',
-                        'transition-all duration-150',
-                        isActive
-                          ? 'bg-slate-800/60 border-amber-500/60'
-                          : 'bg-transparent border-slate-800 hover:border-slate-700 hover:bg-slate-800/30',
-                      ].join(' ')}
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className={[
-                          'w-1.5 h-1.5 rounded-full flex-shrink-0 transition-all duration-150',
-                          isActive ? 'bg-amber-400' : 'bg-slate-700',
-                        ].join(' ')} />
-                        <div className="min-w-0">
-                          <div className={[
-                            'text-sm font-semibold leading-none mb-1 transition-colors duration-150',
-                            isActive ? 'text-white' : 'text-slate-300',
-                          ].join(' ')}>
-                            {model.label}
-                          </div>
-                          <div className="text-xs text-slate-500 leading-none truncate">
-                            {model.description}
-                          </div>
-                        </div>
-                      </div>
-                      <span className={[
-                        'text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ml-3 flex-shrink-0 transition-all duration-150',
-                        model.tier === 'pro'
-                          ? isActive ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-800 text-slate-500'
-                          : model.tier === 'lite'
-                          ? isActive ? 'bg-sky-500/20 text-sky-400' : 'bg-slate-800 text-slate-500'
-                          : isActive ? 'bg-slate-700/60 text-slate-300' : 'bg-slate-800/50 text-slate-600',
-                      ].join(' ')}>
-                        {model.tier === 'pro' ? 'Pro' : model.tier === 'lite' ? 'Lite' : 'Flash'}
+            {/* Divider */}
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px bg-slate-800" />
+              <span className="flex items-center gap-1.5 text-xs font-bold text-slate-500 uppercase tracking-widest">
+                <Cpu size={12} />
+                Modelos por caso de uso
+              </span>
+              <div className="flex-1 h-px bg-slate-800" />
+            </div>
+
+            {/* 4 use-case model selectors */}
+            <div className="space-y-4">
+              {USE_CASES.map((uc) => {
+                const meta = USE_CASE_META[uc];
+                const currentModelId = selectedConfig[meta.modelKey];
+                return (
+                  <div key={uc} className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-slate-300">
+                        {meta.title}
+                      </label>
+                      <span className={tierBadge(currentModelId, true)}>
+                        {tierLabel(currentModelId)}
                       </span>
-                    </button>
-                  );
-                })}
-              </div>
+                    </div>
+                    <p className="text-xs text-slate-600 leading-relaxed">{meta.description}</p>
+                    <div className="relative">
+                      <select
+                        value={currentModelId}
+                        onChange={(e) => updateModel(uc, e.target.value as GeminiModelId)}
+                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-slate-600 transition-colors appearance-none cursor-pointer pr-8"
+                      >
+                        {GEMINI_MODELS.map(m => (
+                          <option key={m.id} value={m.id}>
+                            {m.label} — {m.tier === 'pro' ? 'Pro' : m.tier === 'lite' ? 'Lite' : 'Flash'}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                          <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
             {validationState === 'success' && (
@@ -248,7 +256,6 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
             )}
 
             <div className="space-y-3">
-              {/* Show "Test" button only when there's a new key that hasn't been validated */}
               {apiKey.trim() && validationState !== 'success' && (
                 <button
                   onClick={testConnection}
@@ -256,15 +263,9 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
                   className="w-full py-3 bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-600 rounded-xl font-bold text-white text-sm transition-all flex items-center justify-center gap-2"
                 >
                   {validationState === 'loading' ? (
-                    <>
-                      <Loader2 size={16} className="animate-spin" />
-                      Verificando...
-                    </>
+                    <><Loader2 size={16} className="animate-spin" />Verificando...</>
                   ) : (
-                    <>
-                      <Shield size={16} />
-                      Probar conexión
-                    </>
+                    <><Shield size={16} />Probar conexión</>
                   )}
                 </button>
               )}
@@ -274,18 +275,8 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
                 disabled={!canSave || isSaving}
                 className="w-full py-3 bg-primary hover:bg-amber-400 disabled:bg-slate-800 disabled:text-slate-600 rounded-xl font-bold text-slate-950 text-sm transition-all flex items-center justify-center gap-2 disabled:cursor-not-allowed"
               >
-                {isSaving ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin" />
-                    Guardando...
-                  </>
-                ) : keyValidated ? (
-                  'Guardar nueva key y modelo'
-                ) : modelChanged ? (
-                  'Guardar modelo'
-                ) : (
-                  'Guardar'
-                )}
+                {isSaving && <Loader2 size={16} className="animate-spin" />}
+                {saveLabel}
               </button>
 
               <button
