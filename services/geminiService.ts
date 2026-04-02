@@ -1,6 +1,7 @@
 
 import { GoogleGenAI, Type, Chat, GenerateContentResponse } from "@google/genai";
 import { Question, RefinementQuestion, AnkiCard, AnkiSuggestion, QuestionType, ChatMessage, DocumentContext } from "../types";
+import { DEFAULT_MODEL } from "../constants/geminiModels";
 
 const getApiKey = (): string => {
   const windowConfig = (window as any).__QUIZ_IA_CONFIG__;
@@ -13,17 +14,30 @@ const getApiKey = (): string => {
   return '';
 };
 
+const getModel = (): string => {
+  const windowConfig = (window as any).__QUIZ_IA_CONFIG__;
+  if (windowConfig?.GEMINI_MODEL) return windowConfig.GEMINI_MODEL;
+  if ((window as any).__GEMINI_MODEL__) return (window as any).__GEMINI_MODEL__;
+  return DEFAULT_MODEL;
+};
+
 let aiInstance: GoogleGenAI | null = null;
+let aiInstanceKey: string | null = null;
 
 const getAi = (): GoogleGenAI => {
-  if (!aiInstance) {
-    const key = getApiKey();
-    if (!key) {
-      throw new Error('API key not configured');
-    }
+  const key = getApiKey();
+  if (!key) throw new Error('API key not configured');
+  // Re-create instance if key changed
+  if (!aiInstance || aiInstanceKey !== key) {
     aiInstance = new GoogleGenAI({ apiKey: key });
+    aiInstanceKey = key;
   }
   return aiInstance;
+};
+
+export const resetAiInstance = (): void => {
+  aiInstance = null;
+  aiInstanceKey = null;
 };
 
 // Custom error class for API errors
@@ -109,7 +123,7 @@ export const generateRefinementQuestions = async (topic: string, documentContext
       ? `El usuario quiere un quiz sobre: "${topic}" y ha adjuntado un documento de referencia. Genera 3 preguntas breves para refinar el enfoque del quiz basado en el documento (ej: nivel de dificultad, secciones específicas a priorizar, enfoque teórico vs práctico).`
       : `El usuario quiere un quiz sobre: "${topic}". Genera 3 preguntas breves para refinar su enfoque (ej: nivel de dificultad, subtemas específicos, enfoque teórico vs práctico).`;
     const response = await getAi().models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: getModel(),
       contents: buildContents(basePrompt, documentContext),
       config: {
         responseMimeType: "application/json",
@@ -141,7 +155,7 @@ export const generateQuiz = async (topic: string, count: number, refinements: Re
       : '';
 
     const response = await getAi().models.generateContent({
-      model: 'gemini-3-pro-preview',
+      model: getModel(),
       contents: buildContents(`Genera un quiz sobre "${topic}".${docNote}
       Contexto adicional: ${refinementContext}.
       El quiz debe tener exactamente ${count} preguntas.
@@ -218,7 +232,7 @@ export const evaluateOpenAnswer = async (
 ): Promise<{ isCorrect: boolean; feedback: string }> => {
   try {
     const response = await getAi().models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: getModel(),
       contents: `Evalúa la respuesta del usuario a esta pregunta de quiz.
 Pregunta: ${question}
 Respuesta correcta de referencia: ${correctAnswer}
@@ -253,7 +267,7 @@ export const evaluateCodeAnswer = async (
 ): Promise<{ isCorrect: boolean; feedback: string }> => {
   try {
     const response = await getAi().models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: getModel(),
       contents: `Eres un evaluador de código experto. Evalúa si el código del estudiante resuelve correctamente el siguiente desafío de programación.
 
 Desafío: ${question}
@@ -303,7 +317,7 @@ export const createChatSession = (questionContext: string, chatHistory?: ChatMes
     : undefined;
 
   return getAi().chats.create({
-    model: 'gemini-3-pro-preview',
+    model: getModel(),
     config: {
       systemInstruction: `Eres un tutor experto. Estás ayudando a un estudiante con una pregunta específica de un quiz.
 
@@ -326,7 +340,7 @@ export const analyzeConversationForAnki = async (
 ): Promise<AnkiSuggestion[]> => {
   try {
     const response = await getAi().models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: getModel(),
       contents: `Analiza la siguiente conversación entre un tutor y un estudiante sobre una pregunta de un quiz.
       Identifica los términos o conceptos clave que el estudiante parece necesitar reforzar basándote en sus dudas y errores.
 
@@ -364,7 +378,7 @@ export const generateAnkiCardsFromSuggestions = async (
 ): Promise<AnkiCard[]> => {
   try {
     const response = await getAi().models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: getModel(),
       contents: `Convierte las siguientes sugerencias de estudio en tarjetas de Anki optimizadas.
       Tema General: ${topic}
       Sugerencias: ${JSON.stringify(suggestions)}
@@ -422,7 +436,7 @@ export const generateQuizTags = async (
 ): Promise<string[]> => {
   try {
     const response = await getAi().models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: getModel(),
       contents: `Genera 3 a 5 tags cortos y descriptivos en español para un quiz sobre: "${topic}" con tipos de preguntas: ${questionTypes.join(', ')}.
 Ejemplos de tags: "React", "Hooks", "avanzado", "frontend", "JavaScript", "anatomía", "cálculo".
 Devuelve solo las tags relevantes al tema, sin repetir el tipo de pregunta.`,

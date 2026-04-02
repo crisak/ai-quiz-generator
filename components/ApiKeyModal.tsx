@@ -1,28 +1,41 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import ReactDOM from 'react-dom';
-import { Key, CheckCircle2, XCircle, Loader2, Eye, EyeOff, Shield, Trash2 } from 'lucide-react';
+import { Key, CheckCircle2, XCircle, Loader2, Eye, EyeOff, Shield, Trash2, Cpu } from 'lucide-react';
 import { GoogleGenAI } from '@google/genai';
+import { GEMINI_MODELS, DEFAULT_MODEL, type GeminiModelId } from '../constants/geminiModels';
 
 interface ApiKeyModalProps {
   onClose: () => void;
-  onSave: (apiKey: string) => Promise<void>;
+  onSave: (apiKey: string, model: GeminiModelId) => Promise<void>;
+  onSaveModelOnly: (model: GeminiModelId) => void;
   onClear: () => void;
+  currentModel: GeminiModelId;
 }
 
 type ValidationState = 'idle' | 'loading' | 'success' | 'error';
 
-export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onClose, onSave, onClear }) => {
+export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
+  onClose,
+  onSave,
+  onSaveModelOnly,
+  onClear,
+  currentModel,
+}) => {
   const [apiKey, setApiKey] = useState('');
   const [showKey, setShowKey] = useState(false);
   const [validationState, setValidationState] = useState<ValidationState>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<GeminiModelId>(currentModel || DEFAULT_MODEL);
+
+  // Track whether the model changed vs the persisted one
+  const modelChanged = selectedModel !== currentModel;
+  // Key is filled and validated
+  const keyValidated = validationState === 'success';
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
+      if (e.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
@@ -37,11 +50,9 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onClose, onSave, onCle
     try {
       const ai = new GoogleGenAI({ apiKey: apiKey.trim() });
       await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
+        model: selectedModel,
         contents: 'Say "OK" if you can hear me.',
-        config: {
-          maxOutputTokens: 5,
-        },
+        config: { maxOutputTokens: 5 },
       });
       setValidationState('success');
     } catch (err: any) {
@@ -49,27 +60,32 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onClose, onSave, onCle
       if (err?.error?.code === 401 || err?.status === 'UNAUTHENTICATED') {
         setErrorMessage('API key no válida. Verifica que sea correcta.');
       } else if (err?.error?.code === 429) {
-        setErrorMessage('Cuota excedida. Intenta más tarde.');
+        setErrorMessage('Cuota excedida. Prueba con un modelo Flash o intenta más tarde.');
       } else if (err?.message) {
         setErrorMessage(err.message.split('\n')[0]);
       } else {
         setErrorMessage('Error al conectar. Verifica tu conexión.');
       }
     }
-  }, [apiKey]);
+  }, [apiKey, selectedModel]);
 
   const handleSave = useCallback(async () => {
-    if (validationState !== 'success') return;
-
-    setIsSaving(true);
-    try {
-      await onSave(apiKey.trim());
+    if (keyValidated) {
+      // Save both new key + model
+      setIsSaving(true);
+      try {
+        await onSave(apiKey.trim(), selectedModel);
+        onClose();
+      } catch {
+        setErrorMessage('Error al guardar. Intenta de nuevo.');
+        setIsSaving(false);
+      }
+    } else if (modelChanged && !apiKey.trim()) {
+      // Save model only (no new key entered)
+      onSaveModelOnly(selectedModel);
       onClose();
-    } catch {
-      setErrorMessage('Error al guardar. Intenta de nuevo.');
-      setIsSaving(false);
     }
-  }, [apiKey, validationState, onSave, onClose]);
+  }, [apiKey, selectedModel, keyValidated, modelChanged, onSave, onSaveModelOnly, onClose]);
 
   const handleClear = useCallback(() => {
     onClear();
@@ -84,9 +100,18 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onClose, onSave, onCle
     }
   };
 
+  // Can save if: key validated OR model changed (without a new key)
+  const canSave = keyValidated || (modelChanged && !apiKey.trim());
+
   const modalContent = (
-    <div className="fixed inset-0 z-[300] bg-slate-950/95 backdrop-blur-xl flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-3xl shadow-2xl animate-in zoom-in duration-300" onClick={e => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 z-[300] bg-slate-950/95 backdrop-blur-xl flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-3xl shadow-2xl animate-in zoom-in duration-300 max-h-[90vh] overflow-y-auto"
+        onClick={e => e.stopPropagation()}
+      >
         <div className="p-8">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
@@ -95,7 +120,7 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onClose, onSave, onCle
               </div>
               <div>
                 <h2 className="text-xl font-black text-white">Configuración de API</h2>
-                <p className="text-slate-500 text-xs">Cambia tu clave de API de Gemini</p>
+                <p className="text-slate-500 text-xs">API key y modelo de Gemini</p>
               </div>
             </div>
             <button
@@ -107,6 +132,7 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onClose, onSave, onCle
           </div>
 
           <div className="space-y-6">
+            {/* API Key field */}
             <div className="space-y-2">
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest">
                 Nueva API Key
@@ -120,13 +146,13 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onClose, onSave, onCle
                   value={apiKey}
                   onChange={(e) => {
                     setApiKey(e.target.value);
-                    if (validationState === 'error') {
+                    if (validationState !== 'idle') {
                       setValidationState('idle');
                       setErrorMessage('');
                     }
                   }}
                   onKeyDown={handleKeyDown}
-                  placeholder="Pega tu nueva API key aquí"
+                  placeholder="Deja vacío para mantener la actual"
                   className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-11 pr-12 py-3.5 outline-none text-white placeholder-slate-600 focus:border-slate-600 transition-colors text-sm"
                   autoFocus
                 />
@@ -147,6 +173,73 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onClose, onSave, onCle
               )}
             </div>
 
+            {/* Model selector */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-1.5 text-xs font-bold text-slate-500 uppercase tracking-widest">
+                  <Cpu size={12} />
+                  Modelo
+                </label>
+                <span className="text-xs text-slate-600">
+                  {GEMINI_MODELS.find(m => m.id === selectedModel)?.tier === 'pro'
+                    ? 'Alto rendimiento'
+                    : GEMINI_MODELS.find(m => m.id === selectedModel)?.tier === 'lite'
+                    ? 'Máxima velocidad y economía'
+                    : 'Equilibrio velocidad / calidad'}
+                </span>
+              </div>
+              <div className="grid grid-cols-1 gap-1.5">
+                {GEMINI_MODELS.map((model) => {
+                  const isActive = selectedModel === model.id;
+                  return (
+                    <button
+                      key={model.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedModel(model.id);
+                        if (keyValidated) setValidationState('idle');
+                      }}
+                      className={[
+                        'flex items-center justify-between px-4 py-3 rounded-xl border text-left',
+                        'transition-all duration-150',
+                        isActive
+                          ? 'bg-slate-800/60 border-amber-500/60'
+                          : 'bg-transparent border-slate-800 hover:border-slate-700 hover:bg-slate-800/30',
+                      ].join(' ')}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={[
+                          'w-1.5 h-1.5 rounded-full flex-shrink-0 transition-all duration-150',
+                          isActive ? 'bg-amber-400' : 'bg-slate-700',
+                        ].join(' ')} />
+                        <div className="min-w-0">
+                          <div className={[
+                            'text-sm font-semibold leading-none mb-1 transition-colors duration-150',
+                            isActive ? 'text-white' : 'text-slate-300',
+                          ].join(' ')}>
+                            {model.label}
+                          </div>
+                          <div className="text-xs text-slate-500 leading-none truncate">
+                            {model.description}
+                          </div>
+                        </div>
+                      </div>
+                      <span className={[
+                        'text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ml-3 flex-shrink-0 transition-all duration-150',
+                        model.tier === 'pro'
+                          ? isActive ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-800 text-slate-500'
+                          : model.tier === 'lite'
+                          ? isActive ? 'bg-sky-500/20 text-sky-400' : 'bg-slate-800 text-slate-500'
+                          : isActive ? 'bg-slate-700/60 text-slate-300' : 'bg-slate-800/50 text-slate-600',
+                      ].join(' ')}>
+                        {model.tier === 'pro' ? 'Pro' : model.tier === 'lite' ? 'Lite' : 'Flash'}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             {validationState === 'success' && (
               <div className="flex items-center gap-2 px-4 py-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400 text-sm">
                 <CheckCircle2 size={16} />
@@ -155,10 +248,11 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onClose, onSave, onCle
             )}
 
             <div className="space-y-3">
-              {validationState !== 'success' ? (
+              {/* Show "Test" button only when there's a new key that hasn't been validated */}
+              {apiKey.trim() && validationState !== 'success' && (
                 <button
                   onClick={testConnection}
-                  disabled={!apiKey.trim() || validationState === 'loading'}
+                  disabled={validationState === 'loading'}
                   className="w-full py-3 bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-600 rounded-xl font-bold text-white text-sm transition-all flex items-center justify-center gap-2"
                 >
                   {validationState === 'loading' ? (
@@ -173,11 +267,11 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onClose, onSave, onCle
                     </>
                   )}
                 </button>
-              ) : null}
+              )}
 
               <button
                 onClick={handleSave}
-                disabled={validationState !== 'success' || isSaving}
+                disabled={!canSave || isSaving}
                 className="w-full py-3 bg-primary hover:bg-amber-400 disabled:bg-slate-800 disabled:text-slate-600 rounded-xl font-bold text-slate-950 text-sm transition-all flex items-center justify-center gap-2 disabled:cursor-not-allowed"
               >
                 {isSaving ? (
@@ -185,8 +279,12 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onClose, onSave, onCle
                     <Loader2 size={16} className="animate-spin" />
                     Guardando...
                   </>
+                ) : keyValidated ? (
+                  'Guardar nueva key y modelo'
+                ) : modelChanged ? (
+                  'Guardar modelo'
                 ) : (
-                  'Guardar nueva key'
+                  'Guardar'
                 )}
               </button>
 

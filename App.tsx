@@ -1,7 +1,7 @@
 
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Question, QuestionType, QuizState, QuestionState, ChatMessage, RefinementQuestion, AnkiCard, VocabTerm, QuizExport, DocumentContext } from './types';
-import { generateQuiz, generateRefinementQuestions, evaluateOpenAnswer, evaluateCodeAnswer, generateQuizTags, GeminiAPIError } from './services/geminiService';
+import { generateQuiz, generateRefinementQuestions, evaluateOpenAnswer, evaluateCodeAnswer, generateQuizTags, GeminiAPIError, resetAiInstance } from './services/geminiService';
 import { useQuizStore } from './store/quizStore';
 import { useRepositories } from './repositories/RepositoryContext';
 import { HistorySidebar } from './components/history/HistorySidebar';
@@ -19,6 +19,7 @@ import { useTheme } from './hooks/useTheme';
 import { useConfig } from './hooks/useConfig';
 import { SetupScreen } from './components/SetupScreen';
 import { ApiKeyModal } from './components/ApiKeyModal';
+import type { GeminiModelId } from './constants/geminiModels';
 import {
   Brain,
   ChevronRight,
@@ -71,9 +72,9 @@ const EXAMPLE_PROMPTS = [
 
 const App: React.FC = () => {
   useTheme();
-  const { isConfigured, loadApiKey, saveApiKey, removeConfig } = useConfig();
+  const { isConfigured, loadApiKey, saveApiKey, saveModel, removeConfig, selectedModel } = useConfig();
 
-  // Load API key into window config on mount
+  // Load API key and model into window config on mount
   useEffect(() => {
     if (isConfigured) {
       loadApiKey().then(key => {
@@ -81,17 +82,27 @@ const App: React.FC = () => {
           (window as any).__GEMINI_API_KEY__ = key;
         }
       });
+      (window as any).__GEMINI_MODEL__ = selectedModel;
     }
-  }, [isConfigured, loadApiKey]);
+  }, [isConfigured, loadApiKey, selectedModel]);
 
-  const handleSaveApiKey = useCallback(async (key: string) => {
-    await saveApiKey(key);
+  const handleSaveApiKey = useCallback(async (key: string, model: GeminiModelId) => {
+    await saveApiKey(key, model);
     (window as any).__GEMINI_API_KEY__ = key;
+    (window as any).__GEMINI_MODEL__ = model;
+    resetAiInstance();
   }, [saveApiKey]);
+
+  const handleSaveModelOnly = useCallback((model: GeminiModelId) => {
+    saveModel(model);
+    (window as any).__GEMINI_MODEL__ = model;
+  }, [saveModel]);
 
   const handleClearApiKey = useCallback(() => {
     removeConfig();
     (window as any).__GEMINI_API_KEY__ = '';
+    (window as any).__GEMINI_MODEL__ = '';
+    resetAiInstance();
   }, [removeConfig]);
 
   // Setup gate - block access until configured
@@ -888,7 +899,9 @@ const App: React.FC = () => {
         <ApiKeyModal
           onClose={() => setShowApiKeyModal(false)}
           onSave={handleSaveApiKey}
+          onSaveModelOnly={handleSaveModelOnly}
           onClear={handleClearApiKey}
+          currentModel={selectedModel}
         />
       )}
       </>
@@ -1468,7 +1481,9 @@ const App: React.FC = () => {
         <ApiKeyModal
           onClose={() => setShowApiKeyModal(false)}
           onSave={handleSaveApiKey}
+          onSaveModelOnly={handleSaveModelOnly}
           onClear={handleClearApiKey}
+          currentModel={selectedModel}
         />
       )}
 
