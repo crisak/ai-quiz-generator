@@ -76,19 +76,11 @@ npm install
 
 This will install all required packages listed in `package.json`.
 
-### Step 3: Configure Environment Variables
+### Step 3: Initial Setup
 
-Create a `.env.local` file in the root directory:
+When you first launch the app, you'll see a setup screen where you can enter your Gemini API key directly. This key will be securely encrypted and stored locally in your browser.
 
-```bash
-cp .env.example .env.local
-```
-
-Edit `.env.local` and add your Gemini API key:
-
-```env
-VITE_GEMINI_API_KEY=your_api_key_here
-```
+> **Note:** The API key is encrypted using AES-GCM and stored in your browser's localStorage. It never leaves your device.
 
 See [Obtaining a Gemini API Key](#obtaining-a-gemini-api-key) for detailed instructions.
 
@@ -175,6 +167,8 @@ quiz-ia/
 │   ├── MarkdownRenderer.tsx        # Markdown & diagram rendering
 │   ├── Mermaid.tsx                 # Mermaid diagram support
 │   ├── ThemeToggle.tsx             # Light/dark theme switcher
+│   ├── SetupScreen.tsx            # Initial API key setup (first launch)
+│   ├── ApiKeyModal.tsx            # Modal for changing API key
 │   ├── history/                    # Quiz history & project management
 │   │   ├── QuizBrowserMain.tsx
 │   │   ├── HistorySidebar.tsx
@@ -195,14 +189,19 @@ quiz-ia/
 │
 ├── db/                             # Database configuration
 │   ├── database.ts                 # RxDB singleton initialization
-│   └── schema.ts                   # RxDB JSON schemas
+│   └── schema.ts                 # RxDB JSON schemas
+│
+├── utils/                          # Utility functions
+│   └── crypto.ts                 # AES-GCM encryption for API key
 │
 ├── store/                          # Global state (Zustand)
 │   ├── quizStore.ts               # Quiz state management
-│   └── themeStore.ts              # Theme preferences
+│   ├── themeStore.ts              # Theme preferences
+│   └── configStore.ts            # Encrypted API key storage
 │
 ├── hooks/                          # Custom React hooks
-│   └── useTheme.ts                # Theme hook
+│   ├── useTheme.ts                # Theme hook
+│   └── useConfig.ts               # API key configuration hook
 │
 ├── constants/                      # Application constants
 │   └── auth.ts                     # User ID constant
@@ -320,34 +319,34 @@ Messages are displayed in Spanish (configurable in `geminiService.ts`).
 
 ## 🔐 Security
 
-### Environment Variables
+### API Key Encryption
 
-⚠️ **Important Security Notes:**
+Your API key is protected using:
 
-1. **Never commit `.env.local` to version control** - It's in `.gitignore`
-2. **Never hardcode API keys** - Always use environment variables
-3. **Regenerate API keys if exposed** - If your key is compromised, regenerate it in Google Cloud Console
-4. **Use `VITE_` prefix** - Only variables prefixed with `VITE_` are exposed to the client
+- **AES-GCM 256-bit encryption** - Industry-standard symmetric encryption
+- **PBKDF2 key derivation** - 100,000 iterations with SHA-256
+- **Unique salt per key** - Each stored key has its own cryptographic salt
+- **Browser-only storage** - Key is encrypted/decrypted locally, never sent to any server
 
-### Secure API Key Management
+### How It Works
 
-```javascript
-// ✅ CORRECT - Uses environment variable
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+1. When you enter your API key, it's encrypted using a key derived from your browser
+2. The encrypted key is stored in localStorage
+3. When the app needs to use the API, the key is decrypted in memory
+4. If you clear your browser data, you'll need to re-enter the API key
 
-// ❌ WRONG - Hardcoding API key
-const apiKey = "AIzaSy...";
-```
+### Changing Your API Key
 
-### `.env.local` Template
+1. Click the 🔑 icon in the navigation header
+2. Enter your new API key
+3. Test the connection
+4. Save
 
-Use `.env.example` as a template for required variables:
+### Important Security Notes
 
-```bash
-cp .env.example .env.local
-```
-
-Then update with your actual values. This file is never committed to git.
+1. **Never share your API key** - Google AI Studio allows you to create multiple keys
+2. **Regenerate if exposed** - If your key is compromised, regenerate it in Google AI Studio
+3. **Keys are device-specific** - Since keys are stored locally, clearing browser data will remove them
 
 ---
 
@@ -362,14 +361,12 @@ npm run dev -- --port 3001
 
 ### API Key Not Found
 
-```
-Error: VITE_GEMINI_API_KEY not configured
-```
+When you see the setup screen on first launch, simply enter your Gemini API key and click "Probar conexión" to verify it works.
 
-**Solution:**
-1. Create `.env.local` file in project root
-2. Add: `VITE_GEMINI_API_KEY=your_key_here`
-3. Restart dev server with `npm run dev`
+If you've already configured a key and it's not working:
+1. Click the 🔑 icon in the navigation header
+2. Re-enter your API key
+3. Test the connection again
 
 ### Build Fails with Module Errors
 

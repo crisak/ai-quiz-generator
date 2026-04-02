@@ -2,6 +2,8 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { ChatMessage, Question, QuestionState, AnkiSuggestion, AnkiCard, VocabTerm } from '../types';
 import { createChatSession, analyzeConversationForAnki, generateAnkiCardsFromSuggestions, GeminiAPIError } from '../services/geminiService';
+import { type GeminiModelId } from '../constants/geminiModels';
+import { ButtonDropdown } from './ButtonDropdown';
 import MarkdownRenderer from './MarkdownRenderer';
 import {
   Send, Bot, User, X, MessageSquare, Loader2, Sparkles,
@@ -77,6 +79,7 @@ const ChatSidebar: React.FC<Props> = ({
   const [width, setWidth] = useState(450);
   const [isResizing, setIsResizing] = useState(false);
   const [responseStyle, setResponseStyle] = useState<ResponseStyle>('normal');
+  const [localModelOverride, setLocalModelOverride] = useState<string | undefined>(undefined);
 
   // Vocab CRUD local state
   const [editingTermId, setEditingTermId] = useState<string | null>(null);
@@ -156,9 +159,13 @@ const ChatSidebar: React.FC<Props> = ({
     const context = `${question.question}${optionsList}${userAnswerSection}\n\nExplicación: ${explanation}`;
 
     // Pass existing history so session can be reconstructed after page reload
-    chatRef.current = createChatSession(context, historyRef.current.length > 0 ? historyRef.current : undefined);
+    chatRef.current = createChatSession(
+      context,
+      historyRef.current.length > 0 ? historyRef.current : undefined,
+      localModelOverride
+    );
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [question.id, questionResult?.isFinished]);
+  }, [question.id, questionResult?.isFinished, localModelOverride]);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -340,6 +347,13 @@ const ChatSidebar: React.FC<Props> = ({
           <h3 className="font-bold text-slate-100 truncate">Q: {question.id}</h3>
         </div>
         <div className="flex items-center gap-2">
+          <ButtonDropdown
+            selectedModel={(localModelOverride as GeminiModelId) ?? null}
+            onChange={(id) => setLocalModelOverride(id ?? undefined)}
+            allowDefault
+            compact
+            align="right"
+          />
           <button
             onClick={loadAnkiSuggestions}
             disabled={isAnalyzingAnki || history.length === 0}
