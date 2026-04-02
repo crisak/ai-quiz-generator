@@ -72,7 +72,7 @@ const EXAMPLE_PROMPTS = [
 
 const App: React.FC = () => {
   useTheme();
-  const { isConfigured, loadApiKey, saveApiKey, saveModelConfig, removeConfig, modelConfig } = useConfig();
+  const { isConfigured, apiKey: configApiKey, loadApiKey, saveApiKey, saveModelConfig, removeConfig, modelConfig } = useConfig();
 
   const applyModelConfigToWindow = (config: ModelConfig) => {
     (window as any).__QUIZ_IA_CONFIG__ = {
@@ -939,6 +939,7 @@ const App: React.FC = () => {
           onSaveConfigOnly={handleSaveModelOnly}
           onClear={handleClearApiKey}
           currentConfig={modelConfig}
+          currentApiKey={configApiKey}
         />
       )}
       </>
@@ -991,7 +992,10 @@ const App: React.FC = () => {
           <ApiKeyModal
             onClose={() => setShowApiKeyModal(false)}
             onSave={handleSaveApiKey}
+            onSaveConfigOnly={handleSaveModelOnly}
             onClear={handleClearApiKey}
+            currentConfig={modelConfig}
+            currentApiKey={configApiKey}
           />
         )}
       </div>
@@ -1110,7 +1114,10 @@ const App: React.FC = () => {
           <ApiKeyModal
             onClose={() => setShowApiKeyModal(false)}
             onSave={handleSaveApiKey}
+            onSaveConfigOnly={handleSaveModelOnly}
             onClear={handleClearApiKey}
+            currentConfig={modelConfig}
+            currentApiKey={configApiKey}
           />
         )}
       </div>
@@ -1528,6 +1535,7 @@ const App: React.FC = () => {
           onSaveConfigOnly={handleSaveModelOnly}
           onClear={handleClearApiKey}
           currentConfig={modelConfig}
+          currentApiKey={configApiKey}
         />
       )}
 

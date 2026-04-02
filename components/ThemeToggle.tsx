@@ -19,9 +19,9 @@ function getOptions(iconSize: number): { value: ThemePreference; icon: React.Rea
 export function ThemeToggle({ size = 'sm' }: ThemeToggleProps) {
   const { preference, setPreference } = useThemeStore();
 
-  const outerPadding = size === 'md' ? 'p-1' : 'p-0.5';
-  const btnPadding   = size === 'md' ? 'p-2.5' : 'p-1.5';
-  const iconSize     = size === 'md' ? 18 : 13;
+  const outerPadding = size === 'md' ? 'p-0.5' : 'p-0.5';
+  const btnPadding   = size === 'md' ? 'p-2' : 'p-1.5';
+  const iconSize     = size === 'md' ? 16 : 13;
   const options      = getOptions(iconSize);
 
   return (

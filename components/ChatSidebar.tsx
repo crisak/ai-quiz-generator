@@ -2,7 +2,8 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { ChatMessage, Question, QuestionState, AnkiSuggestion, AnkiCard, VocabTerm } from '../types';
 import { createChatSession, analyzeConversationForAnki, generateAnkiCardsFromSuggestions, GeminiAPIError } from '../services/geminiService';
-import { GEMINI_MODELS } from '../constants/geminiModels';
+import { type GeminiModelId } from '../constants/geminiModels';
+import { ButtonDropdown } from './ButtonDropdown';
 import MarkdownRenderer from './MarkdownRenderer';
 import {
   Send, Bot, User, X, MessageSquare, Loader2, Sparkles,
@@ -346,17 +347,13 @@ const ChatSidebar: React.FC<Props> = ({
           <h3 className="font-bold text-slate-100 truncate">Q: {question.id}</h3>
         </div>
         <div className="flex items-center gap-2">
-          <select
-            value={localModelOverride ?? ''}
-            onChange={(e) => setLocalModelOverride(e.target.value || undefined)}
-            className="bg-slate-800 border border-slate-700 rounded-lg text-xs text-slate-400 px-2 py-1.5 outline-none focus:border-slate-600 transition-colors max-w-[130px] cursor-pointer"
-            title="Modelo para esta sesión de chat"
-          >
-            <option value="">Modelo por defecto</option>
-            {GEMINI_MODELS.map(m => (
-              <option key={m.id} value={m.id}>{m.label}</option>
-            ))}
-          </select>
+          <ButtonDropdown
+            selectedModel={(localModelOverride as GeminiModelId) ?? null}
+            onChange={(id) => setLocalModelOverride(id ?? undefined)}
+            allowDefault
+            compact
+            align="right"
+          />
           <button
             onClick={loadAnkiSuggestions}
             disabled={isAnalyzingAnki || history.length === 0}

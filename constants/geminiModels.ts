@@ -37,6 +37,19 @@ export const GEMINI_MODELS = [
     description: 'El más rápido y económico de los modelos estables. Perfecto para sugerencias de refinamiento, generación de tags y tarjetas Anki.',
     tier: 'lite' as const,
   },
+  // ── Gemini 2.0 Series (cuota gratuita) ───────────────────────────
+  {
+    id: 'gemini-2.0-flash',
+    label: 'Gemini 2 Flash',
+    description: 'Modelo rápido de la serie 2.0, incluido en la cuota gratuita. Buen rendimiento para chat y generación de quizzes básicos a costo cero.',
+    tier: 'flash' as const,
+  },
+  {
+    id: 'gemini-2.0-flash-lite',
+    label: 'Gemini 2 Flash Lite',
+    description: 'La opción más económica de la serie 2.0. Perfecto para sugerencias ligeras y tarjetas Anki con máxima velocidad en cuota gratuita.',
+    tier: 'lite' as const,
+  },
 ] as const;
 
 export type GeminiModelTier = typeof GEMINI_MODELS[number]['tier'];

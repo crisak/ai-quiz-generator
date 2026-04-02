@@ -3,38 +3,26 @@ import ReactDOM from 'react-dom';
 import { Key, CheckCircle2, XCircle, Loader2, Eye, EyeOff, Shield, Trash2, Cpu } from 'lucide-react';
 import { GoogleGenAI } from '@google/genai';
 import {
-  GEMINI_MODELS,
   DEFAULT_MODEL_CONFIG,
   USE_CASE_META,
   type ModelConfig,
   type ModelUseCase,
   type GeminiModelId,
 } from '../constants/geminiModels';
+import { ButtonDropdown } from './ButtonDropdown';
 
 interface ApiKeyModalProps {
   onClose: () => void;
   onSave: (apiKey: string, config: ModelConfig) => Promise<void>;
-  onSaveConfigOnly: (config: ModelConfig) => void;
+  onSaveConfigOnly?: (config: ModelConfig) => void;
   onClear: () => void;
   currentConfig: ModelConfig;
+  currentApiKey?: string | null;
 }
 
 type ValidationState = 'idle' | 'loading' | 'success' | 'error';
 
 const USE_CASES: ModelUseCase[] = ['suggestions', 'quiz', 'chat', 'anki'];
-
-function tierBadge(modelId: GeminiModelId, isActive: boolean) {
-  const tier = GEMINI_MODELS.find(m => m.id === modelId)?.tier;
-  const base = 'text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md';
-  if (tier === 'pro')  return `${base} ${isActive ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-800 text-slate-500'}`;
-  if (tier === 'lite') return `${base} ${isActive ? 'bg-sky-500/20 text-sky-400' : 'bg-slate-800 text-slate-500'}`;
-  return `${base} ${isActive ? 'bg-slate-700/60 text-slate-300' : 'bg-slate-800 text-slate-600'}`;
-}
-
-function tierLabel(modelId: GeminiModelId) {
-  const tier = GEMINI_MODELS.find(m => m.id === modelId)?.tier;
-  return tier === 'pro' ? 'Pro' : tier === 'lite' ? 'Lite' : 'Flash';
-}
 
 export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
   onClose,
@@ -42,8 +30,9 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
   onSaveConfigOnly,
   onClear,
   currentConfig,
+  currentApiKey,
 }) => {
-  const [apiKey, setApiKey] = useState('');
+  const [apiKey, setApiKey] = useState(currentApiKey ?? '');
   const [showKey, setShowKey] = useState(false);
   const [validationState, setValidationState] = useState<ValidationState>('idle');
   const [errorMessage, setErrorMessage] = useState('');
@@ -51,10 +40,11 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
   const [selectedConfig, setSelectedConfig] = useState<ModelConfig>(currentConfig || DEFAULT_MODEL_CONFIG);
 
   const keyValidated = validationState === 'success';
+  const keyChanged = apiKey.trim() !== (currentApiKey ?? '').trim();
   const configChanged = USE_CASES.some(
     uc => selectedConfig[USE_CASE_META[uc].modelKey] !== currentConfig[USE_CASE_META[uc].modelKey]
   );
-  const canSave = keyValidated || (configChanged && !apiKey.trim());
+  const canSave = keyValidated || (configChanged && !keyChanged);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -100,11 +90,11 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
         setErrorMessage('Error al guardar. Intenta de nuevo.');
         setIsSaving(false);
       }
-    } else if (configChanged && !apiKey.trim()) {
-      onSaveConfigOnly(selectedConfig);
+    } else if (configChanged && !keyChanged) {
+      onSaveConfigOnly?.(selectedConfig);
       onClose();
     }
-  }, [apiKey, selectedConfig, keyValidated, configChanged, onSave, onSaveConfigOnly, onClose]);
+  }, [apiKey, selectedConfig, keyValidated, configChanged, keyChanged, onSave, onSaveConfigOnly, onClose]);
 
   const handleClear = useCallback(() => {
     onClear();
@@ -161,7 +151,7 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
             {/* API Key field */}
             <div className="space-y-2">
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest">
-                Nueva API Key
+                {currentApiKey ? 'API Key (activa)' : 'Nueva API Key'}
               </label>
               <div className="relative">
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600">
@@ -178,7 +168,7 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
                     }
                   }}
                   onKeyDown={handleInputKeyDown}
-                  placeholder="Deja vacío para mantener la actual"
+                  placeholder={currentApiKey ? 'Tu API key actual' : 'Deja vacío para mantener la actual'}
                   className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-11 pr-12 py-3.5 outline-none text-white placeholder-slate-600 focus:border-slate-600 transition-colors text-sm"
                   autoFocus
                 />
@@ -216,33 +206,15 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
                 const currentModelId = selectedConfig[meta.modelKey];
                 return (
                   <div key={uc} className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs font-bold text-slate-300">
-                        {meta.title}
-                      </label>
-                      <span className={tierBadge(currentModelId, true)}>
-                        {tierLabel(currentModelId)}
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-600 leading-relaxed">{meta.description}</p>
-                    <div className="relative">
-                      <select
-                        value={currentModelId}
-                        onChange={(e) => updateModel(uc, e.target.value as GeminiModelId)}
-                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-slate-600 transition-colors appearance-none cursor-pointer pr-8"
-                      >
-                        {GEMINI_MODELS.map(m => (
-                          <option key={m.id} value={m.id}>
-                            {m.label} — {m.tier === 'pro' ? 'Pro' : m.tier === 'lite' ? 'Lite' : 'Flash'}
-                          </option>
-                        ))}
-                      </select>
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
-                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                          <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      </div>
-                    </div>
+                    <label className="text-xs font-bold text-slate-300">{meta.title}</label>
+                    <ButtonDropdown
+                      useCase={uc}
+                      selectedModel={currentModelId}
+                      defaultModel={DEFAULT_MODEL_CONFIG[meta.modelKey]}
+                      onChange={(id) => id && updateModel(uc, id)}
+                      apiKey={apiKey.trim() || undefined}
+                      align="left"
+                    />
                   </div>
                 );
               })}
@@ -256,7 +228,7 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
             )}
 
             <div className="space-y-3">
-              {apiKey.trim() && validationState !== 'success' && (
+              {apiKey.trim() && keyChanged && validationState !== 'success' && (
                 <button
                   onClick={testConnection}
                   disabled={validationState === 'loading'}

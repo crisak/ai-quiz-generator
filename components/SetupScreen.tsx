@@ -3,13 +3,13 @@ import { Brain, Key, CheckCircle2, XCircle, Loader2, Eye, EyeOff, Shield, Cpu } 
 import { GoogleGenAI } from '@google/genai';
 import { useConfig } from '../hooks/useConfig';
 import {
-  GEMINI_MODELS,
   DEFAULT_MODEL_CONFIG,
   USE_CASE_META,
   type ModelConfig,
   type ModelUseCase,
   type GeminiModelId,
 } from '../constants/geminiModels';
+import { ButtonDropdown } from './ButtonDropdown';
 
 interface SetupScreenProps {
   onComplete: () => void;
@@ -18,19 +18,6 @@ interface SetupScreenProps {
 type ValidationState = 'idle' | 'loading' | 'success' | 'error';
 
 const USE_CASES: ModelUseCase[] = ['suggestions', 'quiz', 'chat', 'anki'];
-
-function tierBadgeClass(modelId: GeminiModelId) {
-  const tier = GEMINI_MODELS.find(m => m.id === modelId)?.tier;
-  const base = 'text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md';
-  if (tier === 'pro')  return `${base} bg-amber-500/20 text-amber-400`;
-  if (tier === 'lite') return `${base} bg-sky-500/20 text-sky-400`;
-  return `${base} bg-slate-700/60 text-slate-300`;
-}
-
-function tierLabel(modelId: GeminiModelId) {
-  const tier = GEMINI_MODELS.find(m => m.id === modelId)?.tier;
-  return tier === 'pro' ? 'Pro' : tier === 'lite' ? 'Lite' : 'Flash';
-}
 
 export const SetupScreen: React.FC<SetupScreenProps> = ({ onComplete }) => {
   const { saveApiKey } = useConfig();
@@ -164,33 +151,15 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onComplete }) => {
                 const currentModelId = modelConfig[meta.modelKey];
                 return (
                   <div key={uc} className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs font-bold text-slate-300">
-                        {meta.title}
-                      </label>
-                      <span className={tierBadgeClass(currentModelId)}>
-                        {tierLabel(currentModelId)}
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-600 leading-relaxed">{meta.description}</p>
-                    <div className="relative">
-                      <select
-                        value={currentModelId}
-                        onChange={(e) => updateModel(uc, e.target.value as GeminiModelId)}
-                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-slate-600 transition-colors appearance-none cursor-pointer pr-8"
-                      >
-                        {GEMINI_MODELS.map(m => (
-                          <option key={m.id} value={m.id}>
-                            {m.label} — {m.tier === 'pro' ? 'Pro' : m.tier === 'lite' ? 'Lite' : 'Flash'}
-                          </option>
-                        ))}
-                      </select>
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
-                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                          <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      </div>
-                    </div>
+                    <label className="text-xs font-bold text-slate-300">{meta.title}</label>
+                    <ButtonDropdown
+                      useCase={uc}
+                      selectedModel={currentModelId}
+                      defaultModel={DEFAULT_MODEL_CONFIG[meta.modelKey]}
+                      onChange={(id) => id && updateModel(uc, id)}
+                      apiKey={apiKey.trim() || undefined}
+                      align="left"
+                    />
                   </div>
                 );
               })}
