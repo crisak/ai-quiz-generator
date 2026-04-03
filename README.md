@@ -401,6 +401,12 @@ Error: RESOURCE_EXHAUSTED
 
 ---
 
+## 🗺️ Roadmap
+
+- [ ] **Language picker** — Allow users to select the response language from the UI (currently hardcoded to Spanish in `services/geminiService.ts`)
+
+---
+
 ## 📚 Additional Resources
 
 - [Google Gemini API Docs](https://ai.google.dev/gemini-api/docs)

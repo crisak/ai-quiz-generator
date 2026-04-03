@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { ChatMessage, Question, QuestionState, AnkiSuggestion, AnkiCard, VocabTerm } from '../types';
 import { createChatSession, analyzeConversationForAnki, generateAnkiCardsFromSuggestions, GeminiAPIError } from '../services/geminiService';
-import { type GeminiModelId } from '../constants/geminiModels';
+import { type GeminiModelId, DEFAULT_MODEL_CONFIG } from '../constants/geminiModels';
 import { ButtonDropdown } from './ButtonDropdown';
 import MarkdownRenderer from './MarkdownRenderer';
 import {
@@ -350,6 +350,7 @@ const ChatSidebar: React.FC<Props> = ({
           <ButtonDropdown
             selectedModel={(localModelOverride as GeminiModelId) ?? null}
             onChange={(id) => setLocalModelOverride(id ?? undefined)}
+            defaultModel={DEFAULT_MODEL_CONFIG.modelChat}
             allowDefault
             compact
             align="right"
