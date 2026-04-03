@@ -25,14 +25,16 @@ export class ErrorBoundary extends React.Component<Props, State> {
   }
 
   handleReset = () => {
-    // Clear persisted quiz state so the app can boot cleanly
+    // Clear only the quiz state — NOT the API key config (quiz-ia-config)
     try {
       localStorage.removeItem('quiz-ia-storage');
     } catch {
       // ignore
     }
-    this.setState({ hasError: false, error: undefined });
-    window.location.href = window.location.pathname;
+    // Also strip the ?quiz= param so the URL restore doesn't re-trigger the error
+    const url = new URL(window.location.href);
+    url.searchParams.delete('quiz');
+    window.location.href = url.pathname;
   };
 
   render() {

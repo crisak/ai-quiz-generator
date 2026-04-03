@@ -86,21 +86,33 @@ const App: React.FC = () => {
     };
   };
 
-  // Load API key and model config into window on mount
+  // Track whether the API key has been loaded into window (async decrypt)
+  const [apiKeyReady, setApiKeyReady] = useState(false);
+
+  // Load API key and model config into window on mount.
+  // We block rendering the main UI until this resolves so that no AI call
+  // can happen with an empty key (race condition on page refresh).
   useEffect(() => {
-    if (isConfigured) {
-      loadApiKey().then(key => {
-        if (key) {
-          (window as any).__GEMINI_API_KEY__ = key;
-          (window as any).__QUIZ_IA_CONFIG__ = {
-            ...((window as any).__QUIZ_IA_CONFIG__ || {}),
-            GEMINI_API_KEY: key,
-          };
-        }
-      });
-      applyModelConfigToWindow(modelConfig);
+    if (!isConfigured) {
+      setApiKeyReady(true); // nothing to load — SetupScreen will handle it
+      return;
     }
-  }, [isConfigured, loadApiKey, modelConfig]);
+    applyModelConfigToWindow(modelConfig);
+    loadApiKey().then(key => {
+      if (key) {
+        (window as any).__GEMINI_API_KEY__ = key;
+        (window as any).__QUIZ_IA_CONFIG__ = {
+          ...((window as any).__QUIZ_IA_CONFIG__ || {}),
+          GEMINI_API_KEY: key,
+        };
+      }
+      setApiKeyReady(true);
+    }).catch(() => {
+      // Decryption failed — treat as not configured
+      setApiKeyReady(true);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSaveApiKey = useCallback(async (key: string, config: ModelConfig) => {
     await saveApiKey(key, config);
@@ -244,6 +256,26 @@ const App: React.FC = () => {
   }, [storeHydrated]);
   // ─────────────────────────────────────────────────────────────────────────
 
+  /**
+   * Central error handler for all AI service calls.
+   * If the error is "API key not configured", opens the API key modal instead
+   * of showing a cryptic error message.
+   */
+  const handleAiError = useCallback((e: unknown, fallbackMessage: string): void => {
+    if (e instanceof Error && e.message === 'API key not configured') {
+      setShowApiKeyModal(true);
+      return;
+    }
+    if (e instanceof GeminiAPIError) {
+      const statusInfo = e.statusCode ? ` [${e.statusCode}${e.status ? ` ${e.status}` : ''}]` : '';
+      setError(`${e.message}${statusInfo}`);
+    } else if (e instanceof Error) {
+      setError(e.message);
+    } else {
+      setError(fallbackMessage);
+    }
+  }, []);
+
   const addUnknownTerm = useCallback((text: string) => {
     setQuiz(prev => {
       if (!prev) return prev;
@@ -305,14 +337,7 @@ const App: React.FC = () => {
       const questions = await generateRefinementQuestions(topic, contextFile ?? undefined);
       setRefinementQuestions(questions);
     } catch (e) {
-      if (e instanceof GeminiAPIError) {
-        const statusInfo = e.statusCode ? ` [${e.statusCode}${e.status ? ` ${e.status}` : ''}]` : '';
-        setError(`${e.message}${statusInfo}`);
-      } else if (e instanceof Error) {
-        setError(e.message);
-      } else {
-        setError("Error conectando con la IA. Intenta de nuevo.");
-      }
+      handleAiError(e, "Error conectando con la IA. Intenta de nuevo.");
     } finally {
       setLoading(false);
     }
@@ -364,14 +389,7 @@ const App: React.FC = () => {
         console.warn('Could not save session to history:', dbErr);
       }
     } catch (e) {
-      if (e instanceof GeminiAPIError) {
-        const statusInfo = e.statusCode ? ` [${e.statusCode}${e.status ? ` ${e.status}` : ''}]` : '';
-        setError(`${e.message}${statusInfo}`);
-      } else if (e instanceof Error) {
-        setError(e.message);
-      } else {
-        setError("Error generando quiz. Intenta de nuevo.");
-      }
+      handleAiError(e, "Error generando quiz. Intenta de nuevo.");
     } finally {
       setLoading(false);
     }
@@ -576,9 +594,7 @@ const App: React.FC = () => {
         clearGlobalAnkiCards();
         setImportDialogData(null);
       } catch (e) {
-        if (e instanceof GeminiAPIError) setError(e.message);
-        else if (e instanceof Error) setError(e.message);
-        else setError('Error generando quiz. Intenta de nuevo.');
+        handleAiError(e, 'Error generando quiz. Intenta de nuevo.');
       } finally {
         setLoading(false);
       }
@@ -637,6 +653,8 @@ const App: React.FC = () => {
           aiFeedback: result.feedback,
         };
         setQuiz({ ...quiz, results: updatedResults });
+      } catch (e) {
+        handleAiError(e, 'Error evaluando la respuesta. Intenta de nuevo.');
       } finally {
         setEvaluatingOpen(false);
       }
@@ -657,6 +675,8 @@ const App: React.FC = () => {
           aiFeedback: result.feedback
         };
         setQuiz({ ...quiz, results: updatedResults });
+      } catch (e) {
+        handleAiError(e, 'Error evaluando la respuesta. Intenta de nuevo.');
       } finally {
         setEvaluatingOpen(false);
       }
@@ -857,8 +877,9 @@ const App: React.FC = () => {
     </div>
   ) : null;
 
-  // Hydration / URL-restore loading guard
-  if (!storeHydrated || restoringFromUrl) {
+  // Block rendering until API key is decrypted and in window, and Zustand has
+  // rehydrated from localStorage. This prevents AI calls with an empty key.
+  if (!apiKeyReady || !storeHydrated || restoringFromUrl) {
     return (
       <div className="h-screen bg-slate-950 flex items-center justify-center text-slate-400 text-sm gap-3">
         <Loader2 size={18} className="animate-spin text-blue-500" />
