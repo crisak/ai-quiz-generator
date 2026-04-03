@@ -288,11 +288,14 @@ export const ButtonDropdown: React.FC<ButtonDropdownProps> = ({
     document.body
   ) : null;
 
-  // Trigger button label
+  // Trigger button label — resolve actual default model name when "default" is selected
+  const resolvedDefaultInfo = selectedModel === null && allowDefault && defaultModel
+    ? GEMINI_MODELS.find(m => m.id === defaultModel)
+    : null;
   const triggerLabel = selectedModel === null
-    ? 'Modelo por defecto'
+    ? (resolvedDefaultInfo?.label ?? 'Modelo por defecto')
     : (selectedModelInfo?.label ?? selectedModel);
-  const triggerTier = selectedModelInfo?.tier;
+  const triggerTier = selectedModelInfo?.tier ?? resolvedDefaultInfo?.tier;
 
   return (
     <div className="relative">

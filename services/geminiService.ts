@@ -3,6 +3,12 @@ import { GoogleGenAI, Type, Chat, GenerateContentResponse } from "@google/genai"
 import { Question, RefinementQuestion, AnkiCard, AnkiSuggestion, QuestionType, ChatMessage, DocumentContext } from "../types";
 import { DEFAULT_MODEL_CONFIG, type ModelUseCase } from "../constants/geminiModels";
 
+// TODO: Make configurable via UI language picker (see README roadmap)
+const RESPONSE_LANGUAGE = 'español';
+
+const withLanguageInstruction = (prompt: string): string =>
+  `${prompt}\n\nIMPORTANTE: Responde SIEMPRE y EXCLUSIVAMENTE en ${RESPONSE_LANGUAGE}. Todo el contenido generado debe estar en ${RESPONSE_LANGUAGE}.`;
+
 const getApiKey = (): string => {
   const windowConfig = (window as any).__QUIZ_IA_CONFIG__;
   if (windowConfig?.GEMINI_API_KEY) return windowConfig.GEMINI_API_KEY;
@@ -121,11 +127,31 @@ function buildContents(promptText: string, docCtx?: DocumentContext): any {
 export const generateRefinementQuestions = async (topic: string, documentContext?: DocumentContext): Promise<RefinementQuestion[]> => {
   try {
     const basePrompt = documentContext
-      ? `El usuario quiere un quiz sobre: "${topic}" y ha adjuntado un documento de referencia. Genera 3 preguntas breves para refinar el enfoque del quiz basado en el documento (ej: nivel de dificultad, secciones específicas a priorizar, enfoque teórico vs práctico).`
-      : `El usuario quiere un quiz sobre: "${topic}". Genera 3 preguntas breves para refinar su enfoque (ej: nivel de dificultad, subtemas específicos, enfoque teórico vs práctico).`;
+      ? `El usuario quiere un quiz sobre: "${topic}" y ha adjuntado un documento de referencia.
+
+Tu tarea es generar exactamente 3 PREGUNTAS DE PREFERENCIA para entender mejor qué tipo de quiz quiere el usuario.
+Estas preguntas son para CONFIGURAR el quiz, NO son preguntas del quiz en sí.
+
+REGLAS ESTRICTAS:
+- Las preguntas deben ser sobre las PREFERENCIAS del usuario para el quiz (nivel de dificultad, secciones específicas del documento a priorizar, enfoque teórico vs práctico, contexto de uso, etc.)
+- NUNCA generes preguntas que evalúen conocimiento del tema. NO son preguntas de examen.
+- NUNCA preguntes sobre conceptos técnicos del tema como si fuera una evaluación.
+- Ejemplos CORRECTOS: "¿Qué nivel de dificultad prefieres?", "¿Hay alguna sección del documento que quieras priorizar?", "¿Prefieres un enfoque teórico o práctico?"
+- Ejemplos INCORRECTOS: "¿Qué es una función en Python?", "¿Cuál es la diferencia entre TCP y UDP?", "¿Qué patrones de diseño conoces?"`
+      : `El usuario quiere un quiz sobre: "${topic}".
+
+Tu tarea es generar exactamente 3 PREGUNTAS DE PREFERENCIA para entender mejor qué tipo de quiz quiere el usuario.
+Estas preguntas son para CONFIGURAR el quiz, NO son preguntas del quiz en sí.
+
+REGLAS ESTRICTAS:
+- Las preguntas deben ser sobre las PREFERENCIAS del usuario para el quiz (nivel de dificultad, subtemas específicos, enfoque teórico vs práctico, contexto de uso, etc.)
+- NUNCA generes preguntas que evalúen conocimiento del tema. NO son preguntas de examen.
+- NUNCA preguntes sobre conceptos técnicos del tema como si fuera una evaluación.
+- Ejemplos CORRECTOS: "¿Qué nivel de dificultad prefieres?", "¿Hay algún subtema específico que quieras priorizar?", "¿Prefieres un enfoque teórico o práctico?"
+- Ejemplos INCORRECTOS: "¿Qué es una función en Python?", "¿Cuál es la diferencia entre TCP y UDP?", "¿Qué patrones de diseño conoces?"`;
     const response = await getAi().models.generateContent({
       model: getModelForUseCase('suggestions'),
-      contents: buildContents(basePrompt, documentContext),
+      contents: buildContents(withLanguageInstruction(basePrompt), documentContext),
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -157,7 +183,7 @@ export const generateQuiz = async (topic: string, count: number, refinements: Re
 
     const response = await getAi().models.generateContent({
       model: getModelForUseCase('quiz'),
-      contents: buildContents(`Genera un quiz sobre "${topic}".${docNote}
+      contents: buildContents(withLanguageInstruction(`Genera un quiz sobre "${topic}".${docNote}
       Contexto adicional: ${refinementContext}.
       El quiz debe tener exactamente ${count} preguntas.
 
@@ -174,7 +200,7 @@ export const generateQuiz = async (topic: string, count: number, refinements: Re
           starterCode (string): plantilla inicial con la firma de función y comentarios guía. Si el desafío es desde cero, puede ser solo un comentario o string vacío.
           codeLanguage (string): lenguaje sugerido (ej: "python", "javascript", "java", "cpp", "typescript", "go", "rust"). Elige el más natural para el tema.
           correctAnswer (string): solución completa de referencia en el codeLanguage sugerido.
-          options debe ser []. correctIndex debe ser -1. correctIndices debe ser [].`, documentContext),
+          options debe ser []. correctIndex debe ser -1. correctIndices debe ser [].`), documentContext),
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -234,13 +260,13 @@ export const evaluateOpenAnswer = async (
   try {
     const response = await getAi().models.generateContent({
       model: getModelForUseCase('quiz'),
-      contents: `Evalúa la respuesta del usuario a esta pregunta de quiz.
+      contents: withLanguageInstruction(`Evalúa la respuesta del usuario a esta pregunta de quiz.
 Pregunta: ${question}
 Respuesta correcta de referencia: ${correctAnswer}
 Respuesta del usuario: ${userAnswer}
 
 Determina si la respuesta del usuario es sustancialmente correcta (aunque no sea literal).
-Da un feedback breve y educativo en español (máximo 2 oraciones).`,
+Da un feedback breve y educativo (máximo 2 oraciones).`),
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -269,7 +295,7 @@ export const evaluateCodeAnswer = async (
   try {
     const response = await getAi().models.generateContent({
       model: getModelForUseCase('quiz'),
-      contents: `Eres un evaluador de código experto. Evalúa si el código del estudiante resuelve correctamente el siguiente desafío de programación.
+      contents: withLanguageInstruction(`Eres un evaluador de código experto. Evalúa si el código del estudiante resuelve correctamente el siguiente desafío de programación.
 
 Desafío: ${question}
 
@@ -289,7 +315,7 @@ Criterios de evaluación:
 3. ¿Maneja los casos básicos correctamente?
 
 IMPORTANTE: No evalúes estilo de código, eficiencia, ni si usa exactamente el mismo algoritmo que la referencia. Solo importa que resuelva el problema correctamente.
-Da un feedback educativo y constructivo en español (máximo 3 oraciones). Si hay un error específico en el código, señálalo.`,
+Da un feedback educativo y constructivo (máximo 3 oraciones). Si hay un error específico en el código, señálalo.`),
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -320,7 +346,7 @@ export const createChatSession = (questionContext: string, chatHistory?: ChatMes
   return getAi().chats.create({
     model: modelOverride ?? getModelForUseCase('chat'),
     config: {
-      systemInstruction: `Eres un tutor experto. Estás ayudando a un estudiante con una pregunta específica de un quiz.
+      systemInstruction: withLanguageInstruction(`Eres un tutor experto. Estás ayudando a un estudiante con una pregunta específica de un quiz.
 
 Contexto de la pregunta actual:
 ${questionContext}
@@ -328,7 +354,7 @@ ${questionContext}
 Tus respuestas deben ser educativas, alentadoras y usar Markdown para formato.
 Si necesitas mostrar diagramas, usa bloques de Mermaid: \`\`\`mermaid ... \`\`\`.
 REGLA DE FORMATO: Asegúrate de que los bloques de código estén bien formateados.
-REGLA DE CONTEXTO: Enfócate exclusivamente en esta pregunta. Cuando el estudiante haga una pregunta corta o ambigua (ej: "¿qué es X?", "¿por qué?", "explícame esto"), infiere que se refiere al contexto de esta pregunta específica y respóndela directamente sin pedir aclaraciones. No menciones otras preguntas del quiz a menos que el estudiante lo solicite explícitamente.`,
+REGLA DE CONTEXTO: Enfócate exclusivamente en esta pregunta. Cuando el estudiante haga una pregunta corta o ambigua (ej: "¿qué es X?", "¿por qué?", "explícame esto"), infiere que se refiere al contexto de esta pregunta específica y respóndela directamente sin pedir aclaraciones. No menciones otras preguntas del quiz a menos que el estudiante lo solicite explícitamente.`),
     },
     history,
   });
@@ -342,14 +368,14 @@ export const analyzeConversationForAnki = async (
   try {
     const response = await getAi().models.generateContent({
       model: getModelForUseCase('anki'),
-      contents: `Analiza la siguiente conversación entre un tutor y un estudiante sobre una pregunta de un quiz.
+      contents: withLanguageInstruction(`Analiza la siguiente conversación entre un tutor y un estudiante sobre una pregunta de un quiz.
       Identifica los términos o conceptos clave que el estudiante parece necesitar reforzar basándote en sus dudas y errores.
 
       Pregunta: ${question.question}
       Explicación: ${explanation}
       Chat: ${chatHistory}
 
-      Genera un máximo de 10 sugerencias. Cada sugerencia debe ser un término con su definición técnica y el por qué es importante reforzarlo.`,
+      Genera un máximo de 10 sugerencias. Cada sugerencia debe ser un término con su definición técnica y el por qué es importante reforzarlo.`),
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -380,7 +406,7 @@ export const generateAnkiCardsFromSuggestions = async (
   try {
     const response = await getAi().models.generateContent({
       model: getModelForUseCase('anki'),
-      contents: `Convierte las siguientes sugerencias de estudio en tarjetas de Anki optimizadas.
+      contents: withLanguageInstruction(`Convierte las siguientes sugerencias de estudio en tarjetas de Anki optimizadas.
       Tema General: ${topic}
       Sugerencias: ${JSON.stringify(suggestions)}
 
@@ -399,7 +425,7 @@ export const generateAnkiCardsFromSuggestions = async (
             "tags": ["tag1"]
           }
         ]
-      }`,
+      }`),
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -438,9 +464,9 @@ export const generateQuizTags = async (
   try {
     const response = await getAi().models.generateContent({
       model: getModelForUseCase('suggestions'),
-      contents: `Genera 3 a 5 tags cortos y descriptivos en español para un quiz sobre: "${topic}" con tipos de preguntas: ${questionTypes.join(', ')}.
+      contents: withLanguageInstruction(`Genera 3 a 5 tags cortos y descriptivos para un quiz sobre: "${topic}" con tipos de preguntas: ${questionTypes.join(', ')}.
 Ejemplos de tags: "React", "Hooks", "avanzado", "frontend", "JavaScript", "anatomía", "cálculo".
-Devuelve solo las tags relevantes al tema, sin repetir el tipo de pregunta.`,
+Devuelve solo las tags relevantes al tema, sin repetir el tipo de pregunta.`),
       config: {
         responseMimeType: 'application/json',
         responseSchema: {

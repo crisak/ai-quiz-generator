@@ -228,7 +228,8 @@ const App: React.FC = () => {
       setRefinementQuestions(questions);
     } catch (e) {
       if (e instanceof GeminiAPIError) {
-        setError(e.message);
+        const statusInfo = e.statusCode ? ` [${e.statusCode}${e.status ? ` ${e.status}` : ''}]` : '';
+        setError(`${e.message}${statusInfo}`);
       } else if (e instanceof Error) {
         setError(e.message);
       } else {
@@ -286,7 +287,8 @@ const App: React.FC = () => {
       }
     } catch (e) {
       if (e instanceof GeminiAPIError) {
-        setError(e.message);
+        const statusInfo = e.statusCode ? ` [${e.statusCode}${e.status ? ` ${e.status}` : ''}]` : '';
+        setError(`${e.message}${statusInfo}`);
       } else if (e instanceof Error) {
         setError(e.message);
       } else {
@@ -755,7 +757,12 @@ const App: React.FC = () => {
             </button>
           </div>
 
-          {error && <p className="text-red-400 text-xs text-center mt-4">{error}</p>}
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-center mt-4">
+              <p className="text-red-400 text-sm">{error}</p>
+              <p className="text-slate-500 text-xs mt-2">Puedes intentar de nuevo o cambiar el modelo en la configuración.</p>
+            </div>
+          )}
 
           <button
             onClick={() => { setImportDialogData(null); setError(null); }}
@@ -904,7 +911,12 @@ const App: React.FC = () => {
                       })}
                     </div>
                   </div>
-                  {error && <p className="text-red-400 text-xs text-center">{error}</p>}
+                  {error && (
+                    <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-center">
+                      <p className="text-red-400 text-sm">{error}</p>
+                      <p className="text-slate-500 text-xs mt-2">Puedes intentar de nuevo o cambiar el modelo en la configuración.</p>
+                    </div>
+                  )}
                   <button onClick={requestRefinement} disabled={loading || !topic.trim() || selectedTypes.length === 0} className="w-full bg-primary py-4 rounded-xl font-bold text-white shadow-xl transition-all flex items-center justify-center gap-2 disabled:opacity-40">
                     {loading ? <Loader2 className="animate-spin" /> : 'Siguiente'}
                   </button>
@@ -980,8 +992,14 @@ const App: React.FC = () => {
                 <input type="text" placeholder="Tu respuesta..." onChange={(e) => setRefinementAnswers({ ...refinementAnswers, [q.text]: e.target.value })} className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 outline-none text-white focus:ring-2 focus:ring-primary" />
               </div>
             ))}
+            {error && (
+              <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-center">
+                <p className="text-red-400 text-sm">{error}</p>
+                <p className="text-slate-500 text-xs mt-2">Puedes intentar de nuevo o cambiar el modelo en la configuración.</p>
+              </div>
+            )}
             <div className="pt-4 flex gap-3">
-              <button onClick={() => setRefinementQuestions(null)} className="flex-1 py-3 bg-slate-800 rounded-xl font-bold text-slate-400">Atrás</button>
+              <button onClick={() => { setRefinementQuestions(null); setError(null); }} className="flex-1 py-3 bg-slate-800 rounded-xl font-bold text-slate-400">Atrás</button>
               <button onClick={startQuiz} disabled={loading} className="flex-[2] py-3 bg-primary rounded-xl font-bold text-white shadow-lg flex items-center justify-center">
                 {loading ? <Loader2 className="animate-spin" /> : 'Generar Quiz'}
               </button>
