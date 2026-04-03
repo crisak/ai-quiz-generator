@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Trash2, Plus, X, CheckCircle, Clock } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Trash2, Plus, X, CheckCircle, Clock, Check } from 'lucide-react';
 import { useRepositories } from '../../repositories/RepositoryContext';
 import type { QuizSession } from '../../repositories/interfaces';
 
@@ -27,9 +27,14 @@ export const QuizSessionItem: React.FC<QuizSessionItemProps> = ({ session, onCli
   const [addingTag, setAddingTag] = useState(false);
   const [tagInput, setTagInput] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleValue, setTitleValue] = useState(session.topic);
+  const titleInputRef = useRef<HTMLInputElement>(null);
 
   const completedCount = session.results.filter((r: any) => r.isFinished).length;
   const totalCount = session.questionCount;
+  const correctCount = session.results.filter((r: any) => r.isFinished && r.isCorrect).length;
+  const wrongCount = session.results.filter((r: any) => r.isFinished && !r.isCorrect).length;
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -56,6 +61,27 @@ export const QuizSessionItem: React.FC<QuizSessionItemProps> = ({ session, onCli
     await quizSessions.update(session.id, { tags: newTags });
   };
 
+  const handleTitleDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingTitle(true);
+    setTimeout(() => titleInputRef.current?.focus(), 0);
+  };
+
+  const handleSaveTitle = async () => {
+    const trimmed = titleValue.trim();
+    if (trimmed && trimmed !== session.topic) {
+      await quizSessions.update(session.id, { topic: trimmed });
+    } else {
+      setTitleValue(session.topic);
+    }
+    setEditingTitle(false);
+  };
+
+  const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') handleSaveTitle();
+    if (e.key === 'Escape') { setTitleValue(session.topic); setEditingTitle(false); }
+  };
+
   return (
     <div
       onClick={onClick}
@@ -65,9 +91,30 @@ export const QuizSessionItem: React.FC<QuizSessionItemProps> = ({ session, onCli
     >
       {/* Header row */}
       <div className="flex items-start justify-between gap-2 mb-1">
-        <p className="text-white text-xs font-medium leading-snug line-clamp-2 flex-1">
-          {session.topic}
-        </p>
+        {editingTitle ? (
+          <div className="flex items-center gap-1 flex-1" onClick={e => e.stopPropagation()}>
+            <input
+              ref={titleInputRef}
+              type="text"
+              value={titleValue}
+              onChange={e => setTitleValue(e.target.value)}
+              onKeyDown={handleTitleKeyDown}
+              onBlur={handleSaveTitle}
+              className="flex-1 bg-slate-700 border border-blue-600/50 rounded px-1.5 py-0.5 text-white text-xs outline-none"
+            />
+            <button onClick={e => { e.stopPropagation(); handleSaveTitle(); }} className="text-blue-400 hover:text-blue-300 flex-shrink-0">
+              <Check size={11} />
+            </button>
+          </div>
+        ) : (
+          <p
+            className="text-white text-xs font-medium leading-snug line-clamp-2 flex-1"
+            onDoubleClick={handleTitleDoubleClick}
+            title="Doble click para editar"
+          >
+            {session.topic}
+          </p>
+        )}
         <button
           onClick={handleDelete}
           className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-red-400 transition-all flex-shrink-0 mt-0.5"
@@ -78,7 +125,7 @@ export const QuizSessionItem: React.FC<QuizSessionItemProps> = ({ session, onCli
       </div>
 
       {/* Status row */}
-      <div className="flex items-center gap-2 mb-1.5">
+      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
         {session.isCompleted ? (
           <>
             <CheckCircle size={11} className="text-emerald-400 flex-shrink-0" />
@@ -92,6 +139,18 @@ export const QuizSessionItem: React.FC<QuizSessionItemProps> = ({ session, onCli
             <span className="text-amber-400 text-xs">
               {completedCount}/{totalCount} preguntas
             </span>
+          </>
+        )}
+        {completedCount > 0 && (
+          <>
+            <span className="text-emerald-400 text-xs flex items-center gap-0.5">
+              <Check size={9} />{correctCount}
+            </span>
+            {wrongCount > 0 && (
+              <span className="text-red-400 text-xs flex items-center gap-0.5">
+                <X size={9} />{wrongCount}
+              </span>
+            )}
           </>
         )}
         <span className="text-slate-500 text-xs ml-auto">{timeAgo(session.startedAt)}</span>
