@@ -70,6 +70,7 @@ export interface AnkiSuggestion {
 export interface QuizExport {
   version: '1';
   exportedAt: string;
+  sessionId?: string;
   topic: string;
   questionCount: number;
   questionTypes: QuestionType[];

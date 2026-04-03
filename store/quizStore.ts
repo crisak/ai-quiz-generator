@@ -1,6 +1,7 @@
 
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import { useEffect, useState } from 'react';
 import { QuizState, AnkiCard, QuestionType, RefinementQuestion } from '../types';
 
 interface QuizStore {
@@ -43,6 +44,18 @@ const initialState = {
   currentSessionId: null as string | null,
   selectedProjectId: null as string | null,
 };
+
+/** Returns true once Zustand has rehydrated from localStorage */
+export function useStoreHydrated() {
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => {
+    // Zustand persist rehydrates synchronously in the same tick when localStorage is available,
+    // but the component may render before the effect runs. This effect fires after mount,
+    // which is always after rehydration has completed.
+    setHydrated(true);
+  }, []);
+  return hydrated;
+}
 
 export const useQuizStore = create<QuizStore>()(
   persist(

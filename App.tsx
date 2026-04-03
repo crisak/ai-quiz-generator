@@ -2,7 +2,7 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Question, QuestionType, QuizState, QuestionState, ChatMessage, RefinementQuestion, AnkiCard, VocabTerm, QuizExport, DocumentContext } from './types';
 import { generateQuiz, generateRefinementQuestions, evaluateOpenAnswer, evaluateCodeAnswer, generateQuizTags, GeminiAPIError, resetAiInstance } from './services/geminiService';
-import { useQuizStore } from './store/quizStore';
+import { useQuizStore, useStoreHydrated } from './store/quizStore';
 import { useRepositories } from './repositories/RepositoryContext';
 import { HistorySidebar } from './components/history/HistorySidebar';
 import { QuizBrowserMain } from './components/history/QuizBrowserMain';
@@ -140,10 +140,13 @@ const App: React.FC = () => {
     resetAll,
   } = useQuizStore();
 
+  const storeHydrated = useStoreHydrated();
+
   const { quizSessions } = useRepositories();
 
   // Transient UI state (not persisted)
   const [loading, setLoading] = useState(false);
+  const [restoringFromUrl, setRestoringFromUrl] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const [showQuizForm, setShowQuizForm] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -165,6 +168,81 @@ const App: React.FC = () => {
   // Context document attached by the user
   const [contextFile, setContextFile] = useState<DocumentContext | null>(null);
   const contextFileRef = React.useRef<HTMLInputElement>(null);
+
+  // ── URL ↔ quiz session sync ────────────────────────────────────────────────
+  // When a quiz is active, keep ?quiz=<sessionId> in the URL so that a
+  // page refresh can restore the exact session from RxDB.
+
+  // 1. Update URL when sessionId changes
+  useEffect(() => {
+    if (currentSessionId) {
+      const url = new URL(window.location.href);
+      url.searchParams.set('quiz', currentSessionId);
+      window.history.replaceState(null, '', url.toString());
+    } else {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has('quiz')) {
+        url.searchParams.delete('quiz');
+        window.history.replaceState(null, '', url.toString());
+      }
+    }
+  }, [currentSessionId]);
+
+  // 2. On mount (after hydration), if ?quiz= is in the URL but the persisted
+  //    quiz state is missing or belongs to a different session, restore from RxDB.
+  useEffect(() => {
+    if (!storeHydrated) return;
+
+    const urlSessionId = new URLSearchParams(window.location.search).get('quiz');
+    if (!urlSessionId) return;
+
+    // If the store already has the right session loaded, nothing to do.
+    if (currentSessionId === urlSessionId && quiz) return;
+
+    // Restore the session from RxDB
+    setRestoringFromUrl(true);
+    quizSessions.findById(urlSessionId).then(session => {
+      if (!session) {
+        // Session not found — clean up the stale URL param
+        const url = new URL(window.location.href);
+        url.searchParams.delete('quiz');
+        window.history.replaceState(null, '', url.toString());
+        return;
+      }
+
+      // Don't restore already-completed quizzes via URL refresh
+      if (session.isCompleted) {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('quiz');
+        window.history.replaceState(null, '', url.toString());
+        return;
+      }
+
+      const pastResults = (session.results as QuestionState[]).map(r => ({
+        ...r,
+        vocabTerms: r.vocabTerms || [],
+        chatHistory: r.chatHistory || [],
+      }));
+      const firstUnanswered = pastResults.findIndex(r => !r.isFinished);
+
+      setQuiz({
+        topic: session.topic,
+        questions: session.questions as Question[],
+        currentQuestionIndex: firstUnanswered >= 0 ? firstUnanswered : 0,
+        results: pastResults,
+        isCompleted: false,
+      });
+      setTopic(session.topic);
+      setCurrentSessionId(session.id);
+      clearGlobalAnkiCards();
+    }).catch(err => {
+      console.warn('Could not restore quiz from URL:', err);
+    }).finally(() => {
+      setRestoringFromUrl(false);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storeHydrated]);
+  // ─────────────────────────────────────────────────────────────────────────
 
   const addUnknownTerm = useCallback((text: string) => {
     setQuiz(prev => {
@@ -451,6 +529,7 @@ const App: React.FC = () => {
       });
       setTopic(importDialogData.topic);
       clearGlobalAnkiCards();
+      setCurrentSessionId(importDialogData.sessionId ?? null);
       setImportDialogData(null);
     } else if (option === 'rehacer') {
       setQuiz({
@@ -462,6 +541,7 @@ const App: React.FC = () => {
       });
       setTopic(importDialogData.topic);
       clearGlobalAnkiCards();
+      setCurrentSessionId(importDialogData.sessionId ?? null);
       setImportDialogData(null);
     } else {
       // 'nuevo' — AI generates new questions on the same topic
@@ -702,6 +782,7 @@ const App: React.FC = () => {
     const exported: QuizExport = {
       version: '1',
       exportedAt: session.startedAt,
+      sessionId: session.id,
       topic: session.topic,
       questionCount: session.questionCount,
       questionTypes: session.questionTypes as QuestionType[],
@@ -775,6 +856,16 @@ const App: React.FC = () => {
       </div>
     </div>
   ) : null;
+
+  // Hydration / URL-restore loading guard
+  if (!storeHydrated || restoringFromUrl) {
+    return (
+      <div className="h-screen bg-slate-950 flex items-center justify-center text-slate-400 text-sm gap-3">
+        <Loader2 size={18} className="animate-spin text-blue-500" />
+        Cargando...
+      </div>
+    );
+  }
 
   // Initial State: Home (browse history or create new quiz)
   if (!quiz && !refinementQuestions) {

@@ -1,6 +1,6 @@
 
-import React, { useEffect, useState, useCallback } from 'react';
-import { Search, X, Plus, CheckCircle, Clock, Trash2, BookOpen, Tag } from 'lucide-react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { Search, X, Plus, CheckCircle, Clock, Trash2, BookOpen, Tag, Pencil, Check } from 'lucide-react';
 import { useRepositories } from '../../repositories/RepositoryContext';
 import type { QuizSession } from '../../repositories/interfaces';
 
@@ -32,14 +32,41 @@ interface QuizCardProps {
 const QuizCard: React.FC<QuizCardProps> = ({ session, onClick }) => {
   const { quizSessions } = useRepositories();
   const [deleting, setDeleting] = useState(false);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleValue, setTitleValue] = useState(session.topic);
+  const titleInputRef = useRef<HTMLInputElement>(null);
 
   const completedCount = session.results.filter((r: any) => r.isFinished).length;
+  const correctCount = session.results.filter((r: any) => r.isFinished && r.isCorrect).length;
+  const wrongCount = session.results.filter((r: any) => r.isFinished && !r.isCorrect).length;
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!window.confirm('¿Eliminar este quiz del historial?')) return;
     setDeleting(true);
     await quizSessions.delete(session.id);
+  };
+
+  const handleEditTitleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingTitle(true);
+    setTimeout(() => titleInputRef.current?.focus(), 0);
+  };
+
+  const handleSaveTitle = async (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    const trimmed = titleValue.trim();
+    if (trimmed && trimmed !== session.topic) {
+      await quizSessions.update(session.id, { topic: trimmed });
+    } else {
+      setTitleValue(session.topic);
+    }
+    setEditingTitle(false);
+  };
+
+  const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') handleSaveTitle();
+    if (e.key === 'Escape') { setTitleValue(session.topic); setEditingTitle(false); }
   };
 
   return (
@@ -49,14 +76,23 @@ const QuizCard: React.FC<QuizCardProps> = ({ session, onClick }) => {
         deleting ? 'opacity-30 pointer-events-none' : ''
       }`}
     >
-      {/* Delete button */}
-      <button
-        onClick={handleDelete}
-        className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 text-slate-600 hover:text-red-400 transition-all"
-        title="Eliminar"
-      >
-        <Trash2 size={14} />
-      </button>
+      {/* Action buttons */}
+      <div className="absolute top-4 right-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
+        <button
+          onClick={handleEditTitleClick}
+          className="text-slate-500 hover:text-blue-400 transition-colors"
+          title="Editar título"
+        >
+          <Pencil size={13} />
+        </button>
+        <button
+          onClick={handleDelete}
+          className="text-slate-600 hover:text-red-400 transition-colors"
+          title="Eliminar"
+        >
+          <Trash2 size={14} />
+        </button>
+      </div>
 
       {/* Status badge */}
       <div className="flex items-center gap-2 mb-3">
@@ -78,10 +114,49 @@ const QuizCard: React.FC<QuizCardProps> = ({ session, onClick }) => {
         <span className="text-slate-600 text-xs ml-auto">{timeAgo(session.startedAt)}</span>
       </div>
 
-      {/* Topic */}
-      <p className="text-white text-sm font-semibold leading-snug mb-3 line-clamp-2 pr-6">
-        {session.topic}
-      </p>
+      {/* Topic / editable title */}
+      {editingTitle ? (
+        <div className="flex items-center gap-1.5 mb-3" onClick={e => e.stopPropagation()}>
+          <input
+            ref={titleInputRef}
+            type="text"
+            value={titleValue}
+            onChange={e => setTitleValue(e.target.value)}
+            onKeyDown={handleTitleKeyDown}
+            onBlur={() => handleSaveTitle()}
+            className="flex-1 bg-slate-800 border border-blue-600/50 rounded-lg px-2 py-1 text-white text-sm outline-none focus:border-blue-500"
+          />
+          <button
+            onClick={handleSaveTitle}
+            className="text-blue-400 hover:text-blue-300 transition-colors flex-shrink-0"
+          >
+            <Check size={14} />
+          </button>
+        </div>
+      ) : (
+        <p className="text-white text-sm font-semibold leading-snug mb-3 line-clamp-2 pr-6">
+          {session.topic}
+        </p>
+      )}
+
+      {/* Stats row */}
+      <div className="flex items-center gap-3 mb-3 text-xs">
+        <span className="text-slate-500">
+          {session.questionCount} preguntas
+        </span>
+        {completedCount > 0 && (
+          <>
+            <span className="text-emerald-400 font-medium flex items-center gap-0.5">
+              <Check size={10} /> {correctCount}
+            </span>
+            {wrongCount > 0 && (
+              <span className="text-red-400 font-medium flex items-center gap-0.5">
+                <X size={10} /> {wrongCount}
+              </span>
+            )}
+          </>
+        )}
+      </div>
 
       {/* Progress bar for in-progress */}
       {!session.isCompleted && session.questionCount > 0 && (
