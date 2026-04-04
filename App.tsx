@@ -930,14 +930,19 @@ const App: React.FC = () => {
                 <div className="space-y-6">
                   {/* Topic input + file attachment */}
                   <div className="space-y-2">
-                    <input
-                      type="text"
+                    <textarea
                       value={topic}
-                      onChange={(e) => setTopic(e.target.value)}
+                      onChange={(e) => {
+                        setTopic(e.target.value);
+                        e.target.style.height = 'auto';
+                        e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
+                      }}
                       placeholder="Tema (ej: React, Historia...)"
-                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 outline-none text-white focus:ring-2 focus:ring-primary"
-                      onKeyDown={(e) => e.key === 'Enter' && !loading && topic.trim() && selectedTypes.length > 0 && requestRefinement()}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 outline-none text-white focus:ring-2 focus:ring-primary resize-none overflow-hidden"
+                      style={{ minHeight: '48px', maxHeight: '200px' }}
+                      onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && !loading && topic.trim() && selectedTypes.length > 0 && (e.preventDefault(), requestRefinement())}
                       autoFocus
+                      rows={1}
                     />
 
                     {/* File attachment row */}
@@ -994,7 +999,7 @@ const App: React.FC = () => {
                   <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Preguntas</label>
                     <div className="flex gap-2">
-                      {[3, 5, 10].map((n) => (
+                      {[3, 5, 10, 15, 20].map((n) => (
                         <button key={n} onClick={() => setQuestionCount(n)} className={`flex-1 py-2.5 rounded-xl border font-bold transition-all ${questionCount === n ? 'bg-primary border-primary text-white' : 'bg-slate-800 border-slate-700 text-slate-400'}`}>{n}</button>
                       ))}
                     </div>
@@ -1101,7 +1106,17 @@ const App: React.FC = () => {
             {refinementQuestions.map((q) => (
               <div key={q.id}>
                 <label className="block text-sm text-slate-400 mb-2">{q.text}</label>
-                <input type="text" placeholder="Tu respuesta..." onChange={(e) => setRefinementAnswers({ ...refinementAnswers, [q.text]: e.target.value })} className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 outline-none text-white focus:ring-2 focus:ring-primary" />
+                <textarea
+                  placeholder="Tu respuesta..."
+                  onChange={(e) => {
+                    setRefinementAnswers({ ...refinementAnswers, [q.text]: e.target.value });
+                    e.target.style.height = 'auto';
+                    e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
+                  }}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 outline-none text-white focus:ring-2 focus:ring-primary resize-none overflow-hidden"
+                  style={{ minHeight: '48px', maxHeight: '200px' }}
+                  rows={1}
+                />
               </div>
             ))}
             {error && (
