@@ -1,6 +1,14 @@
 import React, { useState } from 'react';
-import { X } from 'lucide-react';
 import type { CreateProjectInput } from '../../repositories/interfaces';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '../ui/dialog';
+import { Input } from '../ui/input';
+import { Textarea } from '../ui/textarea';
+import { Button } from '../ui/button';
 
 const PROJECT_COLORS = [
   { value: '#3b82f6', label: 'Azul' },
@@ -35,41 +43,31 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose,
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
-      <div
-        className="bg-slate-900 border border-slate-700 rounded-2xl p-6 w-80 shadow-2xl"
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-white font-semibold text-sm">Nuevo proyecto</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
-            <X size={16} />
-          </button>
-        </div>
+    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="bg-slate-900 border border-slate-700 rounded-2xl w-80 p-6 shadow-2xl">
+        <DialogHeader>
+          <DialogTitle className="text-white font-semibold text-sm">Nuevo proyecto</DialogTitle>
+        </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <input
-              autoFocus
-              type="text"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder="Nombre del proyecto"
-              maxLength={60}
-              className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm placeholder-slate-400 focus:outline-none focus:border-blue-500"
-            />
-          </div>
+        <form onSubmit={handleSubmit} className="space-y-4 mt-2">
+          <Input
+            autoFocus
+            type="text"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            placeholder="Nombre del proyecto"
+            maxLength={60}
+            className="bg-slate-800 border-slate-600 text-white placeholder:text-slate-400 focus-visible:ring-blue-500"
+          />
 
-          <div>
-            <textarea
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              placeholder="Descripción (opcional)"
-              rows={2}
-              maxLength={200}
-              className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm placeholder-slate-400 focus:outline-none focus:border-blue-500 resize-none"
-            />
-          </div>
+          <Textarea
+            value={description}
+            onChange={e => setDescription(e.target.value)}
+            placeholder="Descripción (opcional)"
+            rows={2}
+            maxLength={200}
+            className="bg-slate-800 border-slate-600 text-white placeholder:text-slate-400 focus-visible:ring-blue-500 resize-none"
+          />
 
           <div>
             <p className="text-slate-400 text-xs mb-2">Color</p>
@@ -91,15 +89,15 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose,
             </div>
           </div>
 
-          <button
+          <Button
             type="submit"
             disabled={!name.trim() || loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-sm font-medium py-2 rounded-lg transition-colors"
+            className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-sm font-medium"
           >
             {loading ? 'Creando...' : 'Crear proyecto'}
-          </button>
+          </Button>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };

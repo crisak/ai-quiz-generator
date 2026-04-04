@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, X, FolderOpen } from 'lucide-react';
+import { Plus, X, FolderOpen, Loader2 } from 'lucide-react';
 import { useRepositories } from '../../repositories/RepositoryContext';
 import { CreateProjectModal } from './CreateProjectModal';
 import type { Project } from '../../repositories/interfaces';
+import { Button } from '../ui/button';
+import { ScrollArea } from '../ui/scroll-area';
+import { cn } from '../../lib/utils';
 
 interface ProjectsSectionProps {
   userId: string;
@@ -48,55 +51,67 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = ({
           <FolderOpen size={12} />
           <span className="text-xs font-medium uppercase tracking-wider">Proyectos</span>
         </div>
-        <button
+        <Button
+          variant="ghost"
+          size="icon"
           onClick={() => setShowModal(true)}
-          className="text-slate-500 hover:text-slate-300 transition-colors"
           title="Nuevo proyecto"
+          className="h-5 w-5 text-slate-500 hover:text-slate-300"
         >
           <Plus size={14} />
-        </button>
+        </Button>
       </div>
 
-      <div className="space-y-0.5 px-2">
-        <button
-          onClick={() => onSelectProject(null)}
-          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm transition-colors text-left ${
-            selectedProjectId === null
-              ? 'bg-slate-700/50 text-white'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
-          }`}
-        >
-          <span className="w-2 h-2 rounded-full bg-slate-500 flex-shrink-0" />
-          <span className="truncate text-xs">Todos</span>
-        </button>
-
-        {projectList.map(project => (
-          <button
-            key={project.id}
-            onClick={() => onSelectProject(project.id)}
-            className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm transition-colors text-left group ${
-              selectedProjectId === project.id
-                ? 'bg-slate-700/50 text-white'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
-            }`}
+      <ScrollArea className="max-h-64">
+        <div className="space-y-0.5 px-2">
+          <Button
+            variant="ghost"
+            onClick={() => onSelectProject(null)}
+            className={cn(
+              'w-full flex items-center gap-2 px-2 py-1.5 h-auto rounded-lg text-sm transition-colors justify-start',
+              selectedProjectId === null
+                ? 'bg-slate-700/50 text-white hover:bg-slate-700/50'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/50',
+            )}
           >
-            <span
-              className="w-2 h-2 rounded-full flex-shrink-0"
-              style={{ backgroundColor: project.color ?? '#3b82f6' }}
-            />
-            <span className="truncate text-xs flex-1">{project.name}</span>
-            <span
-              onClick={e => handleDelete(e, project.id)}
-              className={`opacity-0 group-hover:opacity-100 text-slate-500 hover:text-red-400 transition-all cursor-pointer ${
-                deletingId === project.id ? 'opacity-100 animate-spin' : ''
-              }`}
-              title="Eliminar proyecto"
+            <span className="w-2 h-2 rounded-full bg-slate-500 flex-shrink-0" />
+            <span className="truncate text-xs">Todos</span>
+          </Button>
+
+          {projectList.map(project => (
+            <Button
+              key={project.id}
+              variant="ghost"
+              onClick={() => onSelectProject(project.id)}
+              className={cn(
+                'w-full flex items-center gap-2 px-2 py-1.5 h-auto rounded-lg text-sm transition-colors justify-start group',
+                selectedProjectId === project.id
+                  ? 'bg-slate-700/50 text-white hover:bg-slate-700/50'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/50',
+              )}
             >
-              <X size={12} />
-            </span>
-          </button>
-        ))}
-      </div>
+              <span
+                className="w-2 h-2 rounded-full flex-shrink-0"
+                style={{ backgroundColor: project.color ?? '#3b82f6' }}
+              />
+              <span className="truncate text-xs flex-1 text-left">{project.name}</span>
+              <span
+                onClick={e => handleDelete(e, project.id)}
+                className={cn(
+                  'opacity-0 group-hover:opacity-100 text-slate-500 hover:text-red-400 transition-all cursor-pointer',
+                  deletingId === project.id && 'opacity-100',
+                )}
+                title="Eliminar proyecto"
+              >
+                {deletingId === project.id
+                  ? <Loader2 size={12} className="animate-spin" />
+                  : <X size={12} />
+                }
+              </span>
+            </Button>
+          ))}
+        </div>
+      </ScrollArea>
 
       {showModal && (
         <CreateProjectModal

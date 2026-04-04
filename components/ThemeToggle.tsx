@@ -1,6 +1,8 @@
 import React from 'react';
 import { Sun, Moon, Monitor } from 'lucide-react';
 import { useThemeStore, type ThemePreference } from '../store/themeStore';
+import { Button } from './ui/button';
+import { cn } from '../lib/utils';
 
 type ThemeToggleSize = 'sm' | 'md';
 
@@ -19,26 +21,28 @@ function getOptions(iconSize: number): { value: ThemePreference; icon: React.Rea
 export function ThemeToggle({ size = 'sm' }: ThemeToggleProps) {
   const { preference, setPreference } = useThemeStore();
 
-  const outerPadding = size === 'md' ? 'p-0.5' : 'p-0.5';
-  const btnPadding   = size === 'md' ? 'p-2' : 'p-1.5';
-  const iconSize     = size === 'md' ? 16 : 13;
-  const options      = getOptions(iconSize);
+  const iconSize = size === 'md' ? 16 : 13;
+  const options  = getOptions(iconSize);
 
   return (
-    <div className={`flex items-center bg-slate-900 border border-slate-700 rounded-lg ${outerPadding}`}>
+    <div className="flex items-center bg-slate-900 border border-slate-700 rounded-lg p-0.5">
       {options.map(({ value, icon, label }) => (
-        <button
+        <Button
           key={value}
+          variant="ghost"
+          size="icon"
           onClick={() => setPreference(value)}
           title={label}
-          className={`${btnPadding} rounded-md transition-all ${
+          className={cn(
+            size === 'md' ? 'h-8 w-8' : 'h-6 w-6',
+            'rounded-md transition-all',
             preference === value
-              ? 'bg-slate-800 text-slate-200 shadow-sm'
-              : 'text-slate-500 hover:text-slate-300'
-          }`}
+              ? 'bg-slate-800 text-slate-200 shadow-sm hover:bg-slate-800 hover:text-slate-200'
+              : 'text-slate-500 hover:text-slate-300 hover:bg-transparent',
+          )}
         >
           {icon}
-        </button>
+        </Button>
       ))}
     </div>
   );

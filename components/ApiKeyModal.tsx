@@ -1,5 +1,4 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import ReactDOM from 'react-dom';
 import { Key, CheckCircle2, XCircle, Loader2, Eye, EyeOff, Shield, Trash2, Cpu } from 'lucide-react';
 import { GoogleGenAI } from '@google/genai';
 import {
@@ -10,6 +9,15 @@ import {
   type GeminiModelId,
 } from '../constants/geminiModels';
 import { ButtonDropdown } from './ButtonDropdown';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from './ui/dialog';
+import { Input } from './ui/input';
+import { Button } from './ui/button';
+import { Separator } from './ui/separator';
 
 interface ApiKeyModalProps {
   onClose: () => void;
@@ -45,14 +53,6 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
     uc => selectedConfig[USE_CASE_META[uc].modelKey] !== currentConfig[USE_CASE_META[uc].modelKey]
   );
   const canSave = keyValidated || (configChanged && !keyChanged);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
 
   const testConnection = useCallback(async () => {
     if (!apiKey.trim()) return;
@@ -118,34 +118,21 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
     keyValidated ? 'Guardar key y modelos' :
     configChanged ? 'Guardar modelos' : 'Guardar';
 
-  const modalContent = (
-    <div
-      className="fixed inset-0 z-[300] bg-slate-950/95 backdrop-blur-xl flex items-center justify-center p-4"
-      onClick={onClose}
-    >
-      <div
-        className="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-3xl shadow-2xl animate-in zoom-in duration-300 max-h-[90vh] overflow-y-auto"
-        onClick={e => e.stopPropagation()}
-      >
+  return (
+    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="bg-slate-900 border border-slate-800 max-w-lg rounded-3xl shadow-2xl max-h-[90vh] overflow-y-auto p-0">
         <div className="p-8">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-6">
+          <DialogHeader className="mb-6">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-slate-800 rounded-xl flex items-center justify-center">
                 <Key size={20} className="text-slate-400" />
               </div>
               <div>
-                <h2 className="text-xl font-black text-white">Configuración de API</h2>
-                <p className="text-slate-500 text-xs">API key y modelos por caso de uso</p>
+                <DialogTitle className="text-xl font-black text-white">Configuración de API</DialogTitle>
+                <p className="text-slate-500 text-xs mt-0.5">API key y modelos por caso de uso</p>
               </div>
             </div>
-            <button
-              onClick={onClose}
-              className="p-2 text-slate-600 hover:text-slate-400 transition-colors"
-            >
-              <XCircle size={24} />
-            </button>
-          </div>
+          </DialogHeader>
 
           <div className="space-y-6">
             {/* API Key field */}
@@ -157,7 +144,7 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600">
                   <Key size={16} />
                 </div>
-                <input
+                <Input
                   type={showKey ? 'text' : 'password'}
                   value={apiKey}
                   onChange={(e) => {
@@ -169,7 +156,7 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
                   }}
                   onKeyDown={handleInputKeyDown}
                   placeholder={currentApiKey ? 'Tu API key actual' : 'Deja vacío para mantener la actual'}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-11 pr-12 py-3.5 outline-none text-white placeholder-slate-600 focus:border-slate-600 transition-colors text-sm"
+                  className="bg-slate-800 border-slate-700 pl-11 pr-12 py-3.5 h-auto text-white placeholder:text-slate-600 focus-visible:ring-slate-600"
                   autoFocus
                 />
                 <button
@@ -191,12 +178,12 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
 
             {/* Divider */}
             <div className="flex items-center gap-3">
-              <div className="flex-1 h-px bg-slate-800" />
-              <span className="flex items-center gap-1.5 text-xs font-bold text-slate-500 uppercase tracking-widest">
+              <Separator className="flex-1 bg-slate-800" />
+              <span className="flex items-center gap-1.5 text-xs font-bold text-slate-500 uppercase tracking-widest whitespace-nowrap">
                 <Cpu size={12} />
                 Modelos por caso de uso
               </span>
-              <div className="flex-1 h-px bg-slate-800" />
+              <Separator className="flex-1 bg-slate-800" />
             </div>
 
             {/* 4 use-case model selectors */}
@@ -229,35 +216,37 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
 
             <div className="space-y-3">
               {apiKey.trim() && keyChanged && validationState !== 'success' && (
-                <button
+                <Button
                   onClick={testConnection}
                   disabled={validationState === 'loading'}
-                  className="w-full py-3 bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-600 rounded-xl font-bold text-white text-sm transition-all flex items-center justify-center gap-2"
+                  variant="secondary"
+                  className="w-full py-3 h-auto bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-600 font-bold text-white text-sm"
                 >
                   {validationState === 'loading' ? (
                     <><Loader2 size={16} className="animate-spin" />Verificando...</>
                   ) : (
                     <><Shield size={16} />Probar conexión</>
                   )}
-                </button>
+                </Button>
               )}
 
-              <button
+              <Button
                 onClick={handleSave}
                 disabled={!canSave || isSaving}
-                className="w-full py-3 bg-primary hover:bg-amber-400 disabled:bg-slate-800 disabled:text-slate-600 rounded-xl font-bold text-slate-950 text-sm transition-all flex items-center justify-center gap-2 disabled:cursor-not-allowed"
+                className="w-full py-3 h-auto bg-primary hover:bg-amber-400 disabled:bg-slate-800 disabled:text-slate-600 font-bold text-slate-950 text-sm disabled:cursor-not-allowed"
               >
                 {isSaving && <Loader2 size={16} className="animate-spin" />}
                 {saveLabel}
-              </button>
+              </Button>
 
-              <button
+              <Button
                 onClick={handleClear}
-                className="w-full py-3 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2"
+                variant="ghost"
+                className="w-full py-3 h-auto bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 hover:text-red-400 font-bold text-sm"
               >
                 <Trash2 size={16} />
                 Eliminar configuración
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -279,9 +268,7 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
             Obtener una API key en Google AI Studio
           </a>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
-
-  return ReactDOM.createPortal(modalContent, document.body);
 };

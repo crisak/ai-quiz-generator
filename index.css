@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* ================================================================
    QUIZ IA — DESIGN TOKENS
    Single source of truth for the entire color palette.
@@ -33,6 +37,28 @@
   --error:          #EF4444;   /* Incorrect answer, destructive */
   --info:           #3B82F6;   /* Info, neutral links */
   --warning:        #F59E0B;
+
+  /* shadcn/ui tokens — light mode */
+  --background:           210 40% 98%;
+  --foreground:           222.2 84% 4.9%;
+  --card:                 0 0% 100%;
+  --card-foreground:      222.2 84% 4.9%;
+  --popover:              0 0% 100%;
+  --popover-foreground:   222.2 84% 4.9%;
+  --primary:              43 96% 56%;
+  --primary-foreground:   222.2 84% 4.9%;
+  --secondary:            210 40% 94%;
+  --secondary-foreground: 222.2 84% 4.9%;
+  --muted:                210 40% 94%;
+  --muted-foreground:     215.4 16.3% 46.9%;
+  --accent:               210 40% 94%;
+  --accent-foreground:    222.2 84% 4.9%;
+  --destructive:          0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+  --border:               214.3 31.8% 88%;
+  --input:                214.3 31.8% 88%;
+  --ring:                 224.3 76.3% 48%;
+  --radius:               1rem;
 }
 
 /* --- Dark Mode --- */
@@ -59,6 +85,27 @@ html.dark {
   --error:          #EF4444;
   --info:           #3B82F6;
   --warning:        #F59E0B;
+
+  /* shadcn/ui tokens — dark mode */
+  --background:           222.2 84% 4.9%;
+  --foreground:           210 40% 98%;
+  --card:                 217.2 32.6% 17.5%;
+  --card-foreground:      210 40% 98%;
+  --popover:              217.2 32.6% 17.5%;
+  --popover-foreground:   210 40% 98%;
+  --primary:              43 96% 56%;
+  --primary-foreground:   222.2 84% 4.9%;
+  --secondary:            217.2 32.6% 22%;
+  --secondary-foreground: 210 40% 98%;
+  --muted:                217.2 32.6% 22%;
+  --muted-foreground:     215 20.2% 65.1%;
+  --accent:               217.2 32.6% 22%;
+  --accent-foreground:    210 40% 98%;
+  --destructive:          0 62.8% 30.6%;
+  --destructive-foreground: 210 40% 98%;
+  --border:               217.2 32.6% 25%;
+  --input:                217.2 32.6% 25%;
+  --ring:                 224.3 76.3% 48%;
 }
 
 /* ================================================================
