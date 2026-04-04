@@ -1,6 +1,55 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@plugin "tailwindcss-animate";
+
+@theme {
+  --color-border: hsl(var(--border-color));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+  --radius-3xl: 2rem;
+
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+  --animate-bounce-slow: bounce 2s infinite;
+}
+
+@keyframes accordion-down {
+  from { height: 0; }
+  to { height: var(--radix-accordion-content-height); }
+}
+
+@keyframes accordion-up {
+  from { height: var(--radix-accordion-content-height); }
+  to { height: 0; }
+}
 
 /* ================================================================
    QUIZ IA — DESIGN TOKENS
@@ -17,7 +66,7 @@
   --bg-surface-2:   #F8FAFC;   /* Dropdowns above cards */
 
   /* Borders */
-  --border:         #E2E8F0;   /* Standard borders */
+  --border-color:   #E2E8F0;   /* Standard borders (use --border-color to avoid clash with shadcn --border) */
   --border-soft:    #F1F5F9;   /* Subtle section dividers */
 
   /* Text hierarchy — from most to least prominent */
@@ -68,7 +117,7 @@ html.dark {
   --bg-surface:     #1E293B;
   --bg-surface-2:   #253347;
 
-  --border:         #334155;
+  --border-color:   #334155;
   --border-soft:    #1E293B;
 
   --ink-1:          #E2E8F0;
@@ -128,8 +177,8 @@ body {
 .bg-slate-950        { background-color: var(--bg-primary)  !important; }
 .bg-slate-900        { background-color: var(--bg-surface)  !important; }
 .bg-slate-800        { background-color: var(--bg-elevated) !important; }
-.bg-slate-700        { background-color: var(--border)      !important; }
-.bg-slate-600        { background-color: var(--border)      !important; }
+.bg-slate-700        { background-color: var(--border-color)      !important; }
+.bg-slate-600        { background-color: var(--border-color)      !important; }
 
 /* ── Opacity variants — backdrop headers, overlays, hover states ── */
 .bg-slate-950\/95    { background-color: color-mix(in srgb, var(--bg-primary)  95%, transparent) !important; }
@@ -143,9 +192,9 @@ body {
 .bg-slate-800\/40    { background-color: color-mix(in srgb, var(--bg-elevated) 40%, transparent) !important; }
 .bg-slate-800\/30    { background-color: color-mix(in srgb, var(--bg-elevated) 30%, transparent) !important; }
 .bg-slate-800\/20    { background-color: color-mix(in srgb, var(--bg-elevated) 20%, transparent) !important; }
-.bg-slate-700\/70    { background-color: color-mix(in srgb, var(--border)      70%, transparent) !important; }
-.bg-slate-700\/60    { background-color: color-mix(in srgb, var(--border)      60%, transparent) !important; }
-.bg-slate-700\/50    { background-color: color-mix(in srgb, var(--border)      50%, transparent) !important; }
+.bg-slate-700\/70    { background-color: color-mix(in srgb, var(--border-color)      70%, transparent) !important; }
+.bg-slate-700\/60    { background-color: color-mix(in srgb, var(--border-color)      60%, transparent) !important; }
+.bg-slate-700\/50    { background-color: color-mix(in srgb, var(--border-color)      50%, transparent) !important; }
 
 /* ── Text ── */
 .text-slate-100,
@@ -171,18 +220,18 @@ body {
 .border-slate-950                       { border-color: var(--border-soft) !important; }
 .border-slate-900                       { border-color: var(--border-soft) !important; }
 .border-slate-900\/30                   { border-color: color-mix(in srgb, var(--border-soft) 30%, transparent) !important; }
-.border-slate-800                       { border-color: var(--border)      !important; }
-.border-slate-800\/60                   { border-color: color-mix(in srgb, var(--border) 60%, transparent) !important; }
-.border-slate-800\/50                   { border-color: color-mix(in srgb, var(--border) 50%, transparent) !important; }
-.border-slate-700                       { border-color: var(--border)      !important; }
-.border-slate-700\/50                   { border-color: color-mix(in srgb, var(--border) 50%, transparent) !important; }
-.border-slate-700\/40                   { border-color: color-mix(in srgb, var(--border) 40%, transparent) !important; }
-.border-slate-700\/20                   { border-color: color-mix(in srgb, var(--border) 20%, transparent) !important; }
-.border-slate-600                       { border-color: var(--border)      !important; }
-.border-slate-600\/50                   { border-color: color-mix(in srgb, var(--border) 50%, transparent) !important; }
+.border-slate-800                       { border-color: var(--border-color)      !important; }
+.border-slate-800\/60                   { border-color: color-mix(in srgb, var(--border-color) 60%, transparent) !important; }
+.border-slate-800\/50                   { border-color: color-mix(in srgb, var(--border-color) 50%, transparent) !important; }
+.border-slate-700                       { border-color: var(--border-color)      !important; }
+.border-slate-700\/50                   { border-color: color-mix(in srgb, var(--border-color) 50%, transparent) !important; }
+.border-slate-700\/40                   { border-color: color-mix(in srgb, var(--border-color) 40%, transparent) !important; }
+.border-slate-700\/20                   { border-color: color-mix(in srgb, var(--border-color) 20%, transparent) !important; }
+.border-slate-600                       { border-color: var(--border-color)      !important; }
+.border-slate-600\/50                   { border-color: color-mix(in srgb, var(--border-color) 50%, transparent) !important; }
 
 /* ── Divide ── */
-.divide-slate-700\/40 > * + *          { border-color: color-mix(in srgb, var(--border) 40%, transparent) !important; }
+.divide-slate-700\/40 > * + *          { border-color: color-mix(in srgb, var(--border-color) 40%, transparent) !important; }
 
 /* ── Mermaid diagrams ── */
 .mermaid svg {
