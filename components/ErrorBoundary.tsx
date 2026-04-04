@@ -1,4 +1,6 @@
 import React from 'react';
+import { Card, CardContent } from './ui/card';
+import { Button } from './ui/button';
 
 interface Props {
   children: React.ReactNode;
@@ -45,18 +47,20 @@ export class ErrorBoundary extends React.Component<Props, State> {
           <div className="w-16 h-16 bg-red-500/10 rounded-2xl flex items-center justify-center">
             <span className="text-red-400 text-3xl">⚠</span>
           </div>
-          <div>
-            <h2 className="text-white font-bold text-xl mb-2">Algo salió mal</h2>
-            <p className="text-slate-400 text-sm max-w-xs">
-              Ocurrió un error inesperado. Se limpiará el estado guardado para recuperar la app.
-            </p>
-          </div>
-          <button
-            onClick={this.handleReset}
-            className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl transition-colors"
-          >
-            Volver al inicio
-          </button>
+          <Card className="bg-slate-900 border-slate-800 max-w-xs">
+            <CardContent className="pt-6 space-y-3">
+              <h2 className="text-white font-bold text-xl">Algo salió mal</h2>
+              <p className="text-slate-400 text-sm">
+                Ocurrió un error inesperado. Se limpiará el estado guardado para recuperar la app.
+              </p>
+              <Button
+                onClick={this.handleReset}
+                className="w-full bg-blue-600 hover:bg-blue-500 text-white"
+              >
+                Volver al inicio
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       );
     }

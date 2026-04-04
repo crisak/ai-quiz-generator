@@ -1,7 +1,14 @@
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import Editor, { OnMount } from '@monaco-editor/react';
 import { Code2, RotateCcw, ChevronDown, Check } from 'lucide-react';
+import { Button } from './ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from './ui/dropdown-menu';
 
 export const LANGUAGES = [
   { id: 'python', label: 'Python' },
@@ -38,33 +45,16 @@ const CodeEditor: React.FC<Props> = ({
   onLanguageChange,
   disabled = false,
 }) => {
-  const [showLangMenu, setShowLangMenu] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const editorRef = useRef<any>(null);
+  const [open, setOpen] = useState(false);
+  const editorRef = React.useRef<any>(null);
 
   const currentLang = LANGUAGES.find(l => l.id === language) || LANGUAGES[0];
 
-  // Close language menu on outside click
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setShowLangMenu(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
   const handleMount: OnMount = (editor) => {
     editorRef.current = editor;
-    // Add Tab key handling for indentation inside editor
-    editor.addCommand(
-      // Monaco.KeyCode.Tab = 2
-      2,
-      () => {
-        editor.trigger('keyboard', 'tab', null);
-      }
-    );
+    editor.addCommand(2, () => {
+      editor.trigger('keyboard', 'tab', null);
+    });
   };
 
   const handleReset = () => {
@@ -90,51 +80,49 @@ const CodeEditor: React.FC<Props> = ({
 
         {/* Right: language selector + reset */}
         <div className="flex items-center gap-2">
-          {/* Language selector */}
-          <div className="relative" ref={menuRef}>
-            <button
-              onClick={() => !disabled && setShowLangMenu(v => !v)}
-              disabled={disabled}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-700/70 hover:bg-slate-700 rounded-lg text-xs font-bold text-slate-300 transition-all border border-slate-600/50 disabled:opacity-50 disabled:cursor-not-allowed"
+          <DropdownMenu open={open} onOpenChange={(v) => !disabled && setOpen(v)}>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={disabled}
+                className="flex items-center gap-1.5 px-3 py-1.5 h-auto bg-slate-700/70 hover:bg-slate-700 text-xs font-bold text-slate-300 border border-slate-600/50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {currentLang.label}
+                <ChevronDown size={11} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="bg-slate-800 border-slate-700 rounded-xl shadow-2xl w-40 max-h-64 overflow-y-auto"
             >
-              {currentLang.label}
-              <ChevronDown size={11} className={`transition-transform ${showLangMenu ? 'rotate-180' : ''}`} />
-            </button>
+              {LANGUAGES.map(lang => (
+                <DropdownMenuItem
+                  key={lang.id}
+                  onClick={() => { onLanguageChange(lang.id); setOpen(false); }}
+                  className={`text-xs font-bold cursor-pointer flex items-center justify-between px-3 py-2 ${
+                    lang.id === language
+                      ? 'bg-primary/20 text-primary focus:bg-primary/30 focus:text-primary'
+                      : 'text-slate-300 focus:bg-slate-700 focus:text-slate-100'
+                  }`}
+                >
+                  {lang.label}
+                  {lang.id === language && <Check size={11} />}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
 
-            {showLangMenu && (
-              <div className="absolute right-0 top-full mt-1.5 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl z-50 w-40 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
-                <div className="max-h-64 overflow-y-auto custom-scrollbar py-1">
-                  {LANGUAGES.map(lang => (
-                    <button
-                      key={lang.id}
-                      onClick={() => {
-                        onLanguageChange(lang.id);
-                        setShowLangMenu(false);
-                      }}
-                      className={`w-full text-left px-3 py-2 text-xs font-bold transition-colors flex items-center justify-between ${
-                        lang.id === language
-                          ? 'bg-primary/20 text-primary'
-                          : 'text-slate-300 hover:bg-slate-700'
-                      }`}
-                    >
-                      {lang.label}
-                      {lang.id === language && <Check size={11} />}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Reset to starter code */}
           {starterCode && !disabled && (
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={handleReset}
               title="Restaurar código inicial"
-              className="p-1.5 bg-slate-700/70 hover:bg-slate-700 rounded-lg text-slate-500 hover:text-slate-200 transition-all border border-slate-600/50"
+              className="h-7 w-7 bg-slate-700/70 hover:bg-slate-700 text-slate-500 hover:text-slate-200 border border-slate-600/50"
             >
               <RotateCcw size={12} />
-            </button>
+            </Button>
           )}
         </div>
       </div>

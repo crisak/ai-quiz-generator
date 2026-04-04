@@ -3,6 +3,13 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Search, X, Plus, CheckCircle, Clock, Trash2, BookOpen, Tag, Pencil, Check } from 'lucide-react';
 import { useRepositories } from '../../repositories/RepositoryContext';
 import type { QuizSession } from '../../repositories/interfaces';
+import { Input } from '../ui/input';
+import { Button } from '../ui/button';
+import { Badge } from '../ui/badge';
+import { Card, CardContent } from '../ui/card';
+import { Progress } from '../ui/progress';
+import { ScrollArea } from '../ui/scroll-area';
+import { cn } from '../../lib/utils';
 
 interface QuizBrowserMainProps {
   userId: string;
@@ -39,6 +46,9 @@ const QuizCard: React.FC<QuizCardProps> = ({ session, onClick }) => {
   const completedCount = session.results.filter((r: any) => r.isFinished).length;
   const correctCount = session.results.filter((r: any) => r.isFinished && r.isCorrect).length;
   const wrongCount = session.results.filter((r: any) => r.isFinished && !r.isCorrect).length;
+  const progressPercent = session.questionCount > 0
+    ? (completedCount / session.questionCount) * 100
+    : 0;
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -70,122 +80,124 @@ const QuizCard: React.FC<QuizCardProps> = ({ session, onClick }) => {
   };
 
   return (
-    <div
+    <Card
       onClick={onClick}
-      className={`group bg-slate-900 border border-slate-800 rounded-2xl p-5 cursor-pointer hover:border-slate-600 hover:bg-slate-800/60 transition-all relative ${
-        deleting ? 'opacity-30 pointer-events-none' : ''
-      }`}
+      className={cn(
+        'group bg-slate-900 border-slate-800 rounded-2xl cursor-pointer hover:border-slate-600 hover:bg-slate-800/60 transition-all relative',
+        deleting && 'opacity-30 pointer-events-none',
+      )}
     >
-      {/* Action buttons */}
-      <div className="absolute top-4 right-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
-        <button
-          onClick={handleEditTitleClick}
-          className="text-slate-500 hover:text-blue-400 transition-colors"
-          title="Editar título"
-        >
-          <Pencil size={13} />
-        </button>
-        <button
-          onClick={handleDelete}
-          className="text-slate-600 hover:text-red-400 transition-colors"
-          title="Eliminar"
-        >
-          <Trash2 size={14} />
-        </button>
-      </div>
-
-      {/* Status badge */}
-      <div className="flex items-center gap-2 mb-3">
-        {session.isCompleted ? (
-          <>
-            <CheckCircle size={13} className="text-emerald-400 flex-shrink-0" />
-            <span className="text-emerald-400 text-xs font-semibold">
-              {session.score !== null ? `${session.score}%` : 'Completado'}
-            </span>
-          </>
-        ) : (
-          <>
-            <Clock size={13} className="text-amber-400 flex-shrink-0" />
-            <span className="text-amber-400 text-xs font-semibold">
-              {completedCount}/{session.questionCount} preguntas
-            </span>
-          </>
-        )}
-        <span className="text-slate-600 text-xs ml-auto">{timeAgo(session.startedAt)}</span>
-      </div>
-
-      {/* Topic / editable title */}
-      {editingTitle ? (
-        <div className="flex items-center gap-1.5 mb-3" onClick={e => e.stopPropagation()}>
-          <input
-            ref={titleInputRef}
-            type="text"
-            value={titleValue}
-            onChange={e => setTitleValue(e.target.value)}
-            onKeyDown={handleTitleKeyDown}
-            onBlur={() => handleSaveTitle()}
-            className="flex-1 bg-slate-800 border border-blue-600/50 rounded-lg px-2 py-1 text-white text-sm outline-none focus:border-blue-500"
-          />
-          <button
-            onClick={handleSaveTitle}
-            className="text-blue-400 hover:text-blue-300 transition-colors flex-shrink-0"
+      <CardContent className="p-5">
+        {/* Action buttons */}
+        <div className="absolute top-4 right-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleEditTitleClick}
+            title="Editar título"
+            className="h-6 w-6 text-slate-500 hover:text-blue-400"
           >
-            <Check size={14} />
-          </button>
+            <Pencil size={13} />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleDelete}
+            title="Eliminar"
+            className="h-6 w-6 text-slate-600 hover:text-red-400"
+          >
+            <Trash2 size={14} />
+          </Button>
         </div>
-      ) : (
-        <p className="text-white text-sm font-semibold leading-snug mb-3 line-clamp-2 pr-6">
-          {session.topic}
-        </p>
-      )}
 
-      {/* Stats row */}
-      <div className="flex items-center gap-3 mb-3 text-xs">
-        <span className="text-slate-500">
-          {session.questionCount} preguntas
-        </span>
-        {completedCount > 0 && (
-          <>
-            <span className="text-emerald-400 font-medium flex items-center gap-0.5">
-              <Check size={10} /> {correctCount}
-            </span>
-            {wrongCount > 0 && (
-              <span className="text-red-400 font-medium flex items-center gap-0.5">
-                <X size={10} /> {wrongCount}
-              </span>
-            )}
-          </>
-        )}
-      </div>
-
-      {/* Progress bar for in-progress */}
-      {!session.isCompleted && session.questionCount > 0 && (
-        <div className="h-1 bg-slate-800 rounded-full mb-3 overflow-hidden">
-          <div
-            className="h-full bg-amber-400/60 rounded-full transition-all"
-            style={{ width: `${(completedCount / session.questionCount) * 100}%` }}
-          />
+        {/* Status badge */}
+        <div className="flex items-center gap-2 mb-3">
+          {session.isCompleted ? (
+            <Badge variant="outline" className="border-emerald-500/30 text-emerald-400 bg-emerald-500/10 gap-1 text-xs">
+              <CheckCircle size={11} />
+              {session.score !== null ? `${session.score}%` : 'Completado'}
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="border-amber-500/30 text-amber-400 bg-amber-500/10 gap-1 text-xs">
+              <Clock size={11} />
+              {completedCount}/{session.questionCount} preguntas
+            </Badge>
+          )}
+          <span className="text-slate-600 text-xs ml-auto">{timeAgo(session.startedAt)}</span>
         </div>
-      )}
 
-      {/* Tags */}
-      {session.tags.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {session.tags.slice(0, 4).map(tag => (
-            <span
-              key={tag}
-              className="inline-flex items-center gap-1 bg-slate-800 text-slate-400 text-xs px-2 py-0.5 rounded-full"
+        {/* Topic / editable title */}
+        {editingTitle ? (
+          <div className="flex items-center gap-1.5 mb-3" onClick={e => e.stopPropagation()}>
+            <Input
+              ref={titleInputRef}
+              type="text"
+              value={titleValue}
+              onChange={e => setTitleValue(e.target.value)}
+              onKeyDown={handleTitleKeyDown}
+              onBlur={() => handleSaveTitle()}
+              className="flex-1 bg-slate-800 border-blue-600/50 text-white text-sm h-7 py-1 focus-visible:ring-blue-500"
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleSaveTitle}
+              className="h-7 w-7 text-blue-400 hover:text-blue-300 flex-shrink-0"
             >
-              <Tag size={9} />
-              {tag}
-            </span>
-          ))}
-          {session.tags.length > 4 && (
-            <span className="text-slate-600 text-xs px-1">+{session.tags.length - 4}</span>
+              <Check size={14} />
+            </Button>
+          </div>
+        ) : (
+          <p className="text-white text-sm font-semibold leading-snug mb-3 line-clamp-2 pr-6">
+            {session.topic}
+          </p>
+        )}
+
+        {/* Stats row */}
+        <div className="flex items-center gap-3 mb-3 text-xs">
+          <span className="text-slate-500">{session.questionCount} preguntas</span>
+          {completedCount > 0 && (
+            <>
+              <span className="text-emerald-400 font-medium flex items-center gap-0.5">
+                <Check size={10} /> {correctCount}
+              </span>
+              {wrongCount > 0 && (
+                <span className="text-red-400 font-medium flex items-center gap-0.5">
+                  <X size={10} /> {wrongCount}
+                </span>
+              )}
+            </>
           )}
         </div>
-      )}
-    </div>
+
+        {/* Progress bar for in-progress */}
+        {!session.isCompleted && session.questionCount > 0 && (
+          <Progress
+            value={progressPercent}
+            className="h-1 bg-slate-800 mb-3 [&>div]:bg-amber-400/60"
+          />
+        )}
+
+        {/* Tags */}
+        {session.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {session.tags.slice(0, 4).map(tag => (
+              <Badge
+                key={tag}
+                variant="secondary"
+                className="bg-slate-800 text-slate-400 text-xs px-2 py-0.5 gap-1 rounded-full"
+              >
+                <Tag size={9} />
+                {tag}
+              </Badge>
+            ))}
+            {session.tags.length > 4 && (
+              <span className="text-slate-600 text-xs px-1">+{session.tags.length - 4}</span>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 
@@ -206,10 +218,8 @@ export const QuizBrowserMain: React.FC<QuizBrowserMainProps> = ({
     return () => sub.unsubscribe();
   }, [quizSessions, userId, selectedProjectId]);
 
-  // All unique tags from visible sessions
   const allTags = Array.from(new Set(sessions.flatMap(s => s.tags))).sort();
 
-  // Local filter: search by topic + tags, and tag chip filter
   const filtered = sessions.filter(s => {
     const q = searchQuery.toLowerCase();
     const matchesSearch =
@@ -235,12 +245,12 @@ export const QuizBrowserMain: React.FC<QuizBrowserMainProps> = ({
         {/* Search */}
         <div className="relative mb-4">
           <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
-          <input
+          <Input
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             placeholder="Buscar por tema o tags..."
-            className="w-full bg-slate-800/60 border border-slate-700/50 rounded-xl pl-10 pr-9 py-2.5 text-white text-sm placeholder-slate-500 focus:outline-none focus:border-blue-600/60 transition-colors"
+            className="bg-slate-800/60 border-slate-700/50 pl-10 pr-9 text-white placeholder:text-slate-500 focus-visible:border-blue-600/60 focus-visible:ring-0"
           />
           {searchQuery && (
             <button
@@ -256,32 +266,37 @@ export const QuizBrowserMain: React.FC<QuizBrowserMainProps> = ({
         {allTags.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {allTags.map(tag => (
-              <button
+              <Button
                 key={tag}
+                variant="ghost"
+                size="sm"
                 onClick={() => handleTagFilter(tag)}
-                className={`text-xs px-2.5 py-1 rounded-full font-medium transition-colors ${
+                className={cn(
+                  'text-xs h-7 px-2.5 rounded-full font-medium transition-colors',
                   activeTagFilter === tag
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
-                }`}
+                    ? 'bg-blue-600 text-white hover:bg-blue-600'
+                    : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700',
+                )}
               >
                 {tag}
-              </button>
+              </Button>
             ))}
             {activeTagFilter && (
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => setActiveTagFilter(null)}
-                className="text-xs px-2 py-1 text-slate-500 hover:text-white transition-colors flex items-center gap-1"
+                className="text-xs h-7 px-2 text-slate-500 hover:text-white gap-1"
               >
                 <X size={10} /> Limpiar
-              </button>
+              </Button>
             )}
           </div>
         )}
       </div>
 
       {/* Session grid */}
-      <div className="flex-1 overflow-y-auto px-8 py-6">
+      <ScrollArea className="flex-1 px-8 py-6">
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center">
             <div className="w-20 h-20 bg-slate-800/60 rounded-3xl flex items-center justify-center mb-5">
@@ -307,16 +322,16 @@ export const QuizBrowserMain: React.FC<QuizBrowserMainProps> = ({
             ))}
           </div>
         )}
-      </div>
+      </ScrollArea>
 
       {/* Floating Action Button */}
-      <button
+      <Button
         onClick={onNewQuiz}
-        className="fixed bottom-8 right-8 flex items-center gap-2 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold px-5 py-3 rounded-2xl shadow-lg shadow-blue-600/25 transition-all hover:scale-105 z-50"
+        className="fixed bottom-8 right-8 flex items-center gap-2 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold px-5 py-3 h-auto rounded-2xl shadow-lg shadow-blue-600/25 hover:scale-105 z-50"
       >
         <Plus size={18} />
         New quiz
-      </button>
+      </Button>
     </div>
   );
 };
